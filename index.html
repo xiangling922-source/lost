@@ -1,0 +1,2691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>失物招领处</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070b07;--panel:#0c110c;--bdr:#1a2e1a;--bdr2:#264226;
+  --tx:#8ab58a;--dim:#3d5e3d;--brt:#c0f0c0;--name:#e8c87a;
+  --yan:#9ecfee;--mo:#c9a8f0;--sys:#5a8a5a;--err:#f08080;
+  --good:#80f0a0;--bad:#f07070;--warn:#f0c860;--led:#a8d8a8;
+  --btn:#0b180b;--btnH:#162e16;--btnB:#245224;--btnHB:#3a823a;
+  --spBg:#1a180a;--sp:#d8b860;--spB:#4a4018;
+  --dnBg:#180a0a;--dn:#f09090;--dnB:#4a1818;
+}
+html,body{height:100%;background:var(--bg);color:var(--tx);
+  font-family:'Courier New',monospace;font-size:15px;line-height:1.65}
+body{display:flex;justify-content:center;min-height:100vh;padding:14px}
+
+/* MODAL */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,0.93);
+  display:flex;justify-content:center;align-items:center;z-index:999}
+#mbox{background:var(--panel);border:1px solid var(--bdr2);
+  padding:34px 42px;max-width:400px;width:92%;text-align:center}
+#mbox h2{font-size:1rem;letter-spacing:7px;font-weight:normal;color:var(--brt);margin-bottom:4px}
+.msub{font-size:.7rem;letter-spacing:2px;color:var(--dim);margin-bottom:4px}
+#mstory{font-size:.8rem;color:var(--sys);line-height:2.1;
+  margin:18px 0 20px;text-align:left;border-left:2px solid var(--bdr2);padding-left:12px}
+#mstory em{color:var(--tx);font-style:normal}
+.mlbl{font-size:.68rem;letter-spacing:2px;color:var(--dim);margin-bottom:8px}
+#nin{width:100%;background:transparent;border:none;border-bottom:1px solid var(--btnB);
+  color:var(--name);font-family:'Courier New',monospace;font-size:1.05rem;
+  text-align:center;padding:7px 0;outline:none;letter-spacing:2px;transition:border-color .25s}
+#nin:focus{border-bottom-color:var(--btnHB)}
+#nin::placeholder{color:var(--dim);font-size:.82rem}
+#nok{margin-top:20px;background:transparent;border:1px solid var(--btnB);
+  color:var(--tx);font-family:'Courier New',monospace;font-size:.78rem;
+  letter-spacing:3px;padding:9px 30px;cursor:pointer;transition:.25s}
+#nok:hover{background:var(--btnH);border-color:var(--btnHB);color:var(--brt)}
+
+/* APP */
+#app{width:100%;max-width:760px;display:flex;flex-direction:column}
+
+/* HEADER */
+#hdr{border:1px solid var(--bdr2);border-bottom:none;padding:9px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--panel);flex-wrap:wrap;gap:6px}
+#htitle{font-size:.88rem;letter-spacing:5px;color:var(--brt);font-weight:normal}
+#hstat{display:flex;gap:6px;flex-wrap:wrap}
+.si{font-size:.64rem;letter-spacing:1px;color:var(--dim);
+  border:1px solid var(--bdr);padding:2px 9px;background:var(--bg)}
+.si b{color:var(--yan)}
+
+/* TIMER BAR */
+#timerbar{height:3px;background:var(--bdr);position:relative;transition:none}
+#timerfill{height:100%;background:var(--good);transition:width .4s linear}
+#timerbar.low #timerfill{background:var(--warn)}
+#timerbar.critical #timerfill{background:var(--bad)}
+
+/* OUTPUT */
+#out{border:1px solid var(--bdr2);background:var(--bg);
+  padding:14px 16px;height:400px;overflow-y:auto;
+  white-space:pre-wrap;word-break:break-all;scroll-behavior:smooth}
+#out::-webkit-scrollbar{width:4px;background:var(--bg)}
+#out::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+
+.ol{color:var(--brt);font-weight:bold}
+.on{color:var(--tx)}
+.oi{color:var(--dim);font-style:italic}
+.oy{color:var(--yan)}
+.om{color:var(--mo)}
+.ou{color:var(--dim)}
+.os{color:var(--sys);font-style:italic}
+.ow{color:var(--warn)}
+.oe{color:var(--err)}
+.og{color:var(--good);font-weight:bold}
+.ob{color:var(--bad);font-weight:bold}
+.oG{color:var(--good);font-size:1.02rem;font-weight:bold;letter-spacing:2px}
+.oB{color:var(--bad);font-size:1.02rem;font-weight:bold;letter-spacing:2px}
+.oN{color:var(--warn);font-size:1.02rem;font-weight:bold;letter-spacing:2px}
+.oLK{color:var(--dim)}
+.oLV{color:var(--led)}
+.oLH{color:var(--name)}
+.osep{color:var(--dim)}
+.oitem{color:var(--name)}
+
+/* CHOICES */
+#ch{border:1px solid var(--bdr2);border-top:none;padding:10px 12px;
+  background:var(--panel);display:flex;flex-wrap:wrap;gap:6px;min-height:50px}
+.cb{background:var(--btn);border:1px solid var(--btnB);color:var(--tx);
+  font-family:'Courier New',monospace;font-size:.75rem;padding:6px 13px;
+  cursor:pointer;transition:all .18s;letter-spacing:.4px;white-space:nowrap}
+.cb:hover{background:var(--btnH);border-color:var(--btnHB);color:var(--brt)}
+.cb:active{transform:scale(.97)}
+.sp{background:var(--spBg);border-color:var(--spB);color:var(--sp)}
+.sp:hover{border-color:#886830}
+.dn{background:var(--dnBg);border-color:var(--dnB);color:var(--dn)}
+.dn:hover{border-color:#882828}
+
+/* LEDGER */
+.lrow{display:flex;gap:0;padding:1px 0 1px 10px;border-left:2px solid var(--bdr2)}
+.lk{color:var(--dim);min-width:70px;flex-shrink:0}
+.lv{color:var(--led)}.lh{color:var(--name)}
+
+/* MO NOTES PANEL */
+#notes-panel{display:none;border:1px solid var(--bdr2);border-top:none;
+  padding:10px 14px;background:#0a0d14;max-height:120px;overflow-y:auto;
+  font-size:.72rem;color:var(--mo)}
+#notes-panel.visible{display:block}
+.note-entry{margin-bottom:4px;opacity:.8}
+
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px)}
+
+/* ── GLITCH EFFECTS ── */
+@keyframes timerFlicker{
+  0%,100%{opacity:1}
+  50%{opacity:.2}
+}
+@keyframes textGlitch{
+  0%{color:var(--yan);transform:translate(0)}
+  20%{color:#ff9aee;transform:translate(-2px,0)}
+  40%{color:var(--yan);transform:translate(2px,0)}
+  60%{color:#a8f0ff;transform:translate(0)}
+  80%{color:var(--yan);transform:translate(1px,0)}
+  100%{color:var(--yan);transform:translate(0)}
+}
+@keyframes moGlitch{
+  0%{color:var(--mo);transform:translate(0)}
+  25%{color:#ff8888;transform:translate(2px,0)}
+  50%{color:var(--mo);transform:translate(-1px,0)}
+  75%{color:#ffcc00;transform:translate(1px,0)}
+  100%{color:var(--mo);transform:translate(0)}
+}
+.glitch-yan{animation:textGlitch .4s steps(1) forwards}
+.glitch-mo{animation:moGlitch .4s steps(1) forwards}
+.timer-flicker{animation:timerFlicker .15s steps(1) 4}
+.shelf-corrupt{color:#ff4444!important;font-style:italic}
+
+@media(max-width:580px){
+  body{padding:6px}
+  #out{height:260px;font-size:13px}
+  .cb{font-size:.7rem;padding:5px 9px}
+}
+</style>
+</head>
+<body>
+
+<div id="modal">
+  <div id="mbox">
+    <h2>◈ 失物招领处</h2>
+    <div class="msub">LOST &amp; FOUND</div>
+    <div id="mstory">
+      你似乎什么都不记得了。<br>
+      周围是黑暗。是走廊。<br>
+      是某栋楼里的某个地方。<br><br>
+      你不知道自己怎么来的，<br>
+      不知道出口在哪里。<br><br>
+      <em>但或许你还记得你的名字。</em>
+    </div>
+    <div class="mlbl">你的名字是——</div>
+    <input id="nin" type="text" placeholder="在此输入" maxlength="10" autocomplete="off"/>
+    <br><button id="nok">进 入</button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="hdr">
+    <h1 id="htitle">◈ 失物招领处</h1>
+    <div id="hstat">
+      <div class="si">地点 <b id="stL">—</b></div>
+      <div class="si">时间 <b id="stT">20</b></div>
+      <div class="si">死亡 <b id="stD">0</b></div>
+      <div class="si">道具 <b id="stI">0</b></div>
+      <div class="si">怀疑 <b id="stS">0</b></div>
+    </div>
+  </div>
+  <div id="timerbar"><div id="timerfill" style="width:100%"></div></div>
+  <div id="out"></div>
+  <div id="notes-panel"></div>
+  <div id="ch"></div>
+</div>
+
+<script>
+// ═══════════════════════════
+// STATE
+// ═══════════════════════════
+let P='旅人';
+let nameHistory=[]; // names from previous runs
+let lastFirstVisit=null; // what player visited first last run
+let endingsUnlocked=new Set(); // track which endings player has seen
+const ALL_ENDINGS=['good','normalA','normalB','bad1','bad2','bad3','death1','death2','death3','timeout','assistYan','assistMo'];
+let G={
+  loc:'corridor',inv:[],sus:0,deaths:0,
+  yanV:0,moV:0,loopQ:0,moLoopQ:0,
+  corridorSeen:false,hasNote:false,noteUsed:false,
+  chap:1,ended:false,
+  // items
+  bandageTalked:false,
+  sawShelf:false,
+  // inspect flags
+  inspected:{},
+  // npc seen flags
+  npcsSeen:[],
+  // mo notes (experiment log)
+  moNotes:[],
+  // timer
+  timeLeft:60,
+  totalMoves:0,
+  // item use
+  usedItems:[],
+};
+
+
+
+// ═══════════════════════════
+// SPEAKER NAME HELPERS
+// ═══════════════════════════
+function pYan(){
+  const name = G.yanNamed ? '晏明烛' : '？？？';
+  p(name+'：','oy');
+}
+function pMo(){
+  const name = G.moNamed ? '莫承威' : '？？？';
+  p(name+'：','om');
+}
+
+// ═══════════════════════════
+// NARRATIVE GLITCH
+// ═══════════════════════════
+function narrativeGlitch(el, fakeText, delay=300, duration=400){
+  // show fake text briefly, then restore
+  if(!el) return;
+  const real = el.textContent;
+  setTimeout(()=>{
+    el.classList.add('glitch-yan');
+    el.textContent = fakeText;
+    setTimeout(()=>{
+      el.textContent = real;
+      el.classList.remove('glitch-yan');
+    }, duration);
+  }, delay);
+}
+
+// Called after yanWho() when loopQ hits certain values
+function maybeNarrativeGlitchYan(){
+  // find last .oy element that contains "1997"
+  const lines = Array.from(out.querySelectorAll('.oy'));
+  const line1997 = lines.find(el=>el.textContent.includes('1997'));
+  if(line1997){
+    narrativeGlitch(line1997, '"管理员。"', 400, 500);
+  }
+}
+
+// Called when Mo says "左边走廊" - glitch to show a different direction
+function narrativeGlitchMo(){
+  const lines = Array.from(out.querySelectorAll('.om'));
+  const target = lines.find(el=>el.textContent.includes('左边走廊'));
+  if(target){
+    narrativeGlitch(target, '"你走了——"', 300, 600);
+  }
+}
+
+// Called when yan mentions a death date - briefly shows player name
+function narrativeGlitchDeath(){
+  if(G.sus < 4) return;
+  const lines = Array.from(out.querySelectorAll('.on'));
+  const target = lines.find(el=>el.textContent.includes('四月十二日'));
+  if(target){
+    // flash to show player's own name
+    const real = target.textContent;
+    setTimeout(()=>{
+      target.classList.add('glitch-yan');
+      target.textContent = target.textContent.replace('林晓晨', P);
+      setTimeout(()=>{
+        target.textContent = real;
+        target.classList.remove('glitch-yan');
+      }, 500);
+    }, 800);
+  }
+}
+
+// ═══════════════════════════
+// VISUAL GLITCH EFFECTS
+// ═══════════════════════════
+let glitchArmed = false;
+
+function armGlitch(){
+  if(G.sus>=4 && !glitchArmed){
+    glitchArmed = true;
+    // from now on p() is pGlitch
+    window._origP = window.p || p;
+  }
+}
+
+function maybeGlitchYan(){
+  // 30% chance to glitch a yan line if sus>=6
+  return G.sus>=6 && Math.random()<0.3;
+}
+
+function maybeGlitchMo(){
+  return G.sus>=5 && Math.random()<0.25;
+}
+
+function flashTimerGlitch(){
+  if(G.sus<3) return;
+  const el = document.getElementById('stT');
+  if(!el) return;
+  el.classList.add('timer-flicker');
+  // show wrong number briefly
+  const real = G.timeLeft;
+  el.textContent = Math.floor(Math.random()*20);
+  setTimeout(()=>{
+    el.textContent = real;
+    el.classList.remove('timer-flicker');
+  }, 600);
+}
+
+function glitchYanLine(el){
+  el.classList.add('glitch-yan');
+  setTimeout(()=>el.classList.remove('glitch-yan'), 500);
+}
+
+function glitchMoLine(el){
+  el.classList.add('glitch-mo');
+  setTimeout(()=>el.classList.remove('glitch-mo'), 500);
+}
+
+// Override p() to sometimes glitch yan/mo lines
+const _p = p;
+function pGlitch(t='',c='on'){
+  _p(t,c);
+  if(!G.sus) return;
+  const last = out.lastElementChild;
+  if(!last) return;
+  if(c==='oy' && maybeGlitchYan()){
+    setTimeout(()=>glitchYanLine(last), 200+Math.random()*300);
+  }
+  if(c==='om' && maybeGlitchMo()){
+    setTimeout(()=>glitchMoLine(last), 200+Math.random()*300);
+  }
+}
+
+// Periodic timer flicker
+setInterval(()=>{
+  if(!G.ended && G.sus>=3 && Math.random()<0.15){
+    flashTimerGlitch();
+  }
+}, 4000);
+
+// Bookshelf corrupt effect in clinic
+function triggerShelfCorrupt(){
+  if(G.sus<5) return;
+  const entries = out.querySelectorAll('.on');
+  if(!entries.length) return;
+  const target = entries[Math.floor(Math.random()*entries.length)];
+  target.classList.add('shelf-corrupt');
+  setTimeout(()=>target.classList.remove('shelf-corrupt'), 800);
+}
+
+// ═══════════════════════════
+// OUTPUT
+// ═══════════════════════════
+const out=document.getElementById('out');
+function p(t='',c='on'){
+  const d=document.createElement('div');
+  d.className=c; d.textContent=t;
+  out.appendChild(d); out.scrollTop=out.scrollHeight;
+}
+function pb(){p('','on')}
+function sep(){p('─'.repeat(50),'osep')}
+function clr(){out.innerHTML=''}
+function lrow(k,v,hi=false){
+  const r=document.createElement('div');r.className='lrow';
+  const kd=document.createElement('span');kd.className='lk';kd.textContent=k+' ';
+  const vd=document.createElement('span');vd.className=hi?'lh':'lv';vd.textContent=v;
+  r.appendChild(kd);r.appendChild(vd);
+  out.appendChild(r);out.scrollTop=out.scrollHeight;
+}
+
+// ═══════════════════════════
+// STATUS & TIMER
+// ═══════════════════════════
+const locNames={corridor:'走廊',laf:'失物招领处',clinic:'心理诊所'};
+function updateSt(){
+  armGlitch();
+  document.getElementById('stL').textContent=locNames[G.loc]||G.loc;
+  document.getElementById('stT').textContent=G.timeLeft;
+  document.getElementById('stD').textContent=G.deaths;
+  document.getElementById('stI').textContent=G.inv.length;
+  document.getElementById('stS').textContent=G.sus;
+  // timer bar
+  const pct=Math.max(0,G.timeLeft/60*100);
+  document.getElementById('timerfill').style.width=pct+'%';
+  const tb=document.getElementById('timerbar');
+  tb.className=G.timeLeft<=10?'critical':G.timeLeft<=20?'low':'';
+}
+function tick(n=1){
+  if(G.ended)return false;
+  G.timeLeft=Math.max(0,G.timeLeft-n);
+  G.totalMoves++;
+  updateSt();
+  if(G.loc==='corridor'&&Math.random()<0.25&&G.npcsSeen.length<NPC_EVENTS.length){
+    const unseen=NPC_EVENTS.filter(e=>!G.npcsSeen.includes(e.id));
+    if(unseen.length){
+      const ev=unseen[Math.floor(Math.random()*unseen.length)];
+      G.npcsSeen.push(ev.id);
+      pb();
+      p('[ 走廊碎片 ]','os');
+      ev.lines.forEach(l=>p(l,'oi'));
+      if(ev.ledger){G.inv.push('__npc_'+ev.id);}
+      pb();
+    }
+  }
+  if(G.loc==='clinic'){addMoNote();}
+  if(G.timeLeft<=0){endTimeout();return false;}
+  return true;
+}
+
+// ═══════════════════════════
+// MO NOTES PANEL
+// ═══════════════════════════
+const MO_NOTE_TEMPLATES=[
+  n=>{
+    let firstStr='？？？';
+    if(G.firstVisit==='clinic'&&G.moNamed) firstStr='"我"';
+    else if(G.firstVisit==='laf'&&G.yanNamed) firstStr='"管理员"';
+    return `受试者${P}第${n}次行动：选择与${firstStr}互动。`;
+  },
+  n=>`第${n}次记录：受试者在走廊停留时间超过预期。`,
+  n=>`第${n}次记录：受试者怀疑值升至${G.sus}。反应正常。`,
+  n=>`第${n}次记录：受试者反复询问同一问题。目的不明。`,
+  n=>`第${n}次记录：受试者开始检查环境细节。进展良好。`,
+  n=>`第${n}次记录：受试者持有道具${G.inv.filter(i=>!i.startsWith('__')).join('、')||'无'}。`,
+  n=>`第${n}次记录：受试者死亡${G.deaths}次。复原能力稳定。`,
+  n=>`第${n}次记录：受试者开始对本记录产生怀疑。`,
+];
+function addMoNote(){
+  const n=G.moNotes.length+1;
+  if(n>MO_NOTE_TEMPLATES.length)return;
+  // 只存索引，渲染时才执行，这样名字状态变化后能实时更新
+  G.moNotes.push(n-1);
+  refreshNotePanel();
+}
+
+function refreshNotePanel(){
+  const panel=document.getElementById('notes-panel');
+  panel.innerHTML='';
+  if(G.moNotes.length===0) return;
+  panel.classList.add('visible');
+  G.moNotes.forEach((idx,i)=>{
+    const note=MO_NOTE_TEMPLATES[idx](i+1);
+    const d=document.createElement('div');
+    d.className='note-entry';
+    d.textContent='[ '+(G.moNamed?'莫承威':'？？？')+' 观察记录 #'+(i+1)+' ] '+note;
+    panel.appendChild(d);
+  });
+  panel.scrollTop=panel.scrollHeight;
+}
+
+// ═══════════════════════════
+// CORRIDOR NPC EVENTS
+// ═══════════════════════════
+const NPC_EVENTS=[
+  {id:'student1',ledger:true,lines:[
+    '一个学生从走廊另一头走来。',
+    '他低着头，抱着一摞书。',
+    '经过你身边的时候，他停了一下。',
+    '"你也是来找东西的吗？"',
+    '然后他继续走，消失在走廊尽头。',
+    '你没来得及问他的名字。',
+  ]},
+  {id:'teacher1',ledger:false,lines:[
+    '走廊里忽然出现一个穿白衬衫的女人。',
+    '她走得很快，像是有急事。',
+    '经过你时，她看了你一眼。',
+    '"你不应该在这里。"',
+    '然后她消失了。',
+    '走廊里没有任何门在那个方向。',
+  ]},
+  {id:'child1',ledger:true,lines:[
+    '你听见走廊尽头有脚步声。',
+    '一个很小的孩子坐在地上，面对着墙。',
+    '你走近。他没有转身。',
+    '"我的东西丢了。"',
+    '"她说会帮我保管。"',
+    '"但我不记得我丢了什么了。"',
+    '你再走近一步。他消失了。',
+    '地板上留着一双很小的鞋印。',
+  ]},
+  {id:'janitor1',ledger:false,lines:[
+    '一个老人拿着拖把从旁边经过。',
+    '他在你面前停下来，用拖把指着失物招领处的方向。',
+    '"那两个，"他说，"认识的时间比这栋楼还长。"',
+    '"别问我怎么知道的。"',
+    '他继续拖地，没有再说话。',
+  ]},
+  {id:'mirror1',ledger:false,lines:[
+    '走廊墙上有一面镜子，你之前没注意到。',
+    '你在镜子里看见自己。',
+    '然后你看见——镜子里的你，比你晚了半秒才动。',
+    '你快速转身。走廊空无一人。',
+    '再看镜子。镜子里的你正常了。',
+    '但它嘴角的弧度和你的，不完全一样。',
+  ]},
+];
+
+// ═══════════════════════════
+// INVENTORY ITEMS
+// ═══════════════════════════
+const ITEMS={
+  '录音机':{
+    desc:'一台老式录音机。按下播放键，里面有声音。',
+    useYan:()=>{
+      pb();
+      p('你把录音机放在柜台上。','oi');
+      p('她抬头，看了一眼，然后翻开登记册。','oi');
+      pb();
+      pYan();
+      p('"失主：林晓晨。高三二班。"','oy');
+      p('"死于四月十二日。"','oy');
+      pb();
+      p('停顿。','oi');
+      pb();
+      pYan();
+      p('"录音机里是她最后录的那句话。"','oy');
+      p('"我没有权限播放。"','oy');
+      p('"但我知道她说了什么。"','oy');
+      pb();
+      p('她合上册子，没有继续说。','oi');
+      G.sus+=2;
+    },
+    useMo:()=>{
+      pb();
+      p('你把录音机放在桌上。','oi');
+      p('莫承威看了它很久。','oi');
+      pb();
+      pMo();
+      p('"这不是你的。"','om');
+      pb();
+      p('停顿。','oi');
+      pb();
+      pMo();
+      p('"但你已经带走了。"','om');
+      p('"所以现在是你的。"','om');
+      pb();
+      p('他把录音机推回来，低头继续写字。','oi');
+      p('他在纸上写了什么。你没看清。','oi');
+      G.sus+=1;
+    }
+  },
+  '照片':{
+    desc:'一张黑白照片。照片里有两个人站在这栋楼前。背面写着今天的日期。',
+    useYan:()=>{
+      pb();
+      p('你把照片放在柜台上。','oi');
+      p('她这次没有翻册子。','oi');
+      p('她直接拿起来，看了很久。','oi');
+      pb();
+      pYan();
+      p('"失主：无。"','oy');
+      pb();
+      p('你：','ou');
+      p('"照片上的人呢？"','ou');
+      pb();
+      pYan();
+      p('"不是失主。"','oy');
+      p('"是遗物。"','oy');
+      pb();
+      p('她把照片放进抽屉里。','oi');
+      G.sus+=3;G.chap=Math.max(G.chap,3);
+    },
+    useMo:()=>{
+      pb();
+      p('你把照片放在桌上。','oi');
+      p('莫承威看了一眼就移开了视线。','oi');
+      pb();
+      pMo();
+      p('"照片背面的日期，"','om');
+      p('"是今天。"','om');
+      pb();
+      p('你：','ou');
+      p('"我知道。"','ou');
+      pb();
+      pMo();
+      p('"照片上的两个人，"','om');
+      p('"一个是她。"','om');
+      pb();
+      p('他没有说另一个是谁。','oi');
+      p('他重新低下头，翻书。','oi');
+      G.sus+=3;G.chap=Math.max(G.chap,4);
+    }
+  },
+  '钥匙链':{
+    desc:'一个普通的钥匙链，上面挂着一把小钥匙和一个磨损的兔子挂件。没有钥匙。',
+    useYan:()=>{
+      pb();
+      p('你把钥匙链放在柜台上。','oi');
+      p('她翻开册子。','oi');
+      pb();
+      lrow('失物','钥匙链×1');
+      lrow('失主','陈建国');
+      lrow('状态','已认领',true);
+      pb();
+      pYan();
+      p('"他上周来过。"','oy');
+      p('"说钥匙已经找不回来了。"','oy');
+      p('"只要链子。"','oy');
+      pb();
+      p('她在登记册上盖了章，收起钥匙链。','oi');
+    },
+    useMo:()=>{
+      pb();
+      p('你把钥匙链放在桌上。','oi');
+      p('莫承威看了一眼。','oi');
+      pb();
+      pMo();
+      p('"陈建国的。"','om');
+      pb();
+      p('你没有告诉他这是谁的东西。','oi');
+      pb();
+      pMo();
+      p('"他来过我这里。"','om');
+      p('"三次。"','om');
+      p('"第三次之后，他没有再来。"','om');
+      pb();
+      p('他合上资料夹，把钥匙链推回来。','oi');
+      G.sus+=2;
+    }
+  },
+  '军用绷带':{
+    desc:'一卷军用压缩绷带，包装完整。不知道是谁放在那里的。',
+    useYan:()=>{
+      pb();
+      p('你把绷带放在窗口上。','oi');pb();
+      pYan();
+      p('"走廊尽头捡的？"','oy');pb();
+      p('她没有等你回答，已经在翻册子了。','oi');pb();
+      lrow('失物','军用压缩绷带×1');
+      lrow('地点','走廊尽头');
+      lrow('失主','未知');
+      lrow('状态','已认领',true);pb();
+      pYan();
+      p('"失主来过。"','oy');
+      p('"我说还没人来认领。"','oy');pb();
+      p('停顿。','oi');pb();
+      pYan();
+      p('"现在算认领了。"','oy');pb();
+      p('她合上册子，把绷带收进架子后面。','oi');
+      G.bandageTalked=true;G.sus+=2;
+    },
+    useMo:()=>{
+      pb();
+      p('你把绷带放在桌上。','oi');pb();
+      p('他抬起头，看了一眼。','oi');pb();
+      pMo();
+      p('"绷带。"','om');pb();
+      p('他低下头，在纸上写了什么。','oi');pb();
+      pMo();
+      p('"受伤了吗。"','om');pb();
+      p('他问得很轻。像在确认一个数据。','oi');pb();
+      p('他把绷带推回来。','oi');pb();
+      pMo();
+      p('"留着吧。"','om');
+      p('"说不定会用到。"','om');pb();
+      p('他重新低头写字。','oi');
+    }
+  },
+  '莫承威的纸条':{
+    desc:'一张折叠的纸条，上面是一串数字。备注：去失物招领处。',
+    useYan:()=>{
+      pb();
+      p('你把纸条放在柜台上。','oi');
+      p('她看了一眼数字。','oi');
+      pb();
+      pYan();
+      p('"他给的？"','oy');
+      pb();
+      p('你点头。','oi');
+      pb();
+      pYan();
+      p('"他不常帮人。"','oy');
+      pb();
+      p('她在登记册某一页写了什么，然后把纸条烧掉了。','oi');
+      p('打火机是从哪里来的你不知道。','oi');
+      pb();
+      pYan();
+      p('"登记了。"','oy');
+      p('"你可以离开了。"','oy');
+      G.noteUsed=true;G.sus+=2;
+      pb();
+      p('【莫承威的纸条已使用】','og');
+    },
+    useMo:null
+  },
+};
+
+// ═══════════════════════════
+// INSPECT SPOTS
+// ═══════════════════════════
+const INSPECT={
+  corridor:{
+    '走廊尽头':[
+      '你走到走廊最深处。',
+      '地板上有脚印。',
+      '只有来的方向，没有走的方向。',
+      '脚印大小不一，像是很多人来过。',
+      '但没有一个人离开。',
+      '角落里有一个半开的箱子。',
+      '里面有一卷军用压缩绷带，包装完整。',
+    ],
+    '墙上的告示':[
+      '你凑近去看那张告示。',
+      '公告内容：有遗失物者请前往B栋侧门失物招领处登记。',
+      '管理员：？？？，全年无休。',
+      '日期栏：1997年 · 2005年 · 2014年 · 2026年。',
+      '你用手摸了摸纸面。',
+      '是同一张纸。年份是后来加上去的。',
+      '用的是同一支笔，同一种字迹。',
+    ],
+    '灯管':[
+      '走廊里有一根灯管在闪。',
+      '你抬头看。',
+      '它的闪烁是有规律的——不是电路问题。',
+      '你数了一下：三短两长，三短两长。',
+      '那是摩尔斯电码里的SOS。',
+    ],
+  },
+  laf:{
+    '登记册封面':[
+      '你凑近看登记册的封面。',
+      '管理员：？？？。',
+      '任期：1997年至今。',
+      '你翻到1997年那一页。',
+      '第一条登记记录。',
+      '失物：钥匙×1。失主：？？？。',
+      '签名：（字迹模糊）。',
+
+    ],
+    '架子最高层':[
+      '你踮起脚，看架子最高一层。',
+      '那里的东西落满了灰，很久没人碰过。',
+      '你看见一个小木盒，没有标签。',
+      '你想拿下来。',
+      '她抬起头。',
+      '"那个不是失物。"',
+      '她重新低下头。',
+      '你没有再问。',
+    ],
+    '柜台侧面':[
+      '你绕到柜台侧面。',
+      '木头表面有很多划痕。',
+      '你俯身看——是字。',
+      '密密麻麻，都是人名。',
+      '有些名字后面还有日期。',
+      '你在里面看见了林晓晨。',
+      '还有陈建国。',
+      '还有一个名字，字迹和其他的不一样——',
+      '是用指甲划的，很深。',
+      '那个名字，你不认识。',
+    ],
+  },
+  clinic:{
+    '书架':[
+      '你走近书架。',
+      '书按颜色排列，整整齐齐。',
+      '你抽出一本——封面上没有标题。',
+      '你翻开第一页。',
+      '上面写着：「观察记录 · 受试者档案」',
+      '你翻到最后一页。',
+      '最后一行写着你的名字。',
+      '你把书放回去。',
+      '它滑进书架的声音，比你预期的响。',
+    ],
+    '桌上文件':[
+      '你趁他低头写字，翻看桌上的文件。',
+      '他好像没有注意到。或者他注意到了，只是没有说。',
+      '你翻看桌上的文件。',
+      '第一页：受试者进入记录。你的名字。',
+      '第二页：行为记录。你每次的选择都在上面。',
+      '第三页：你看不清，字迹开始变模糊。',
+      '第四页：一片空白。',
+      '但空白的页面上，有一个手印。',
+      '大小和你的手，完全一样。',
+    ],
+    '窗外':[
+      '你走到窗边，透过百叶窗往外看。',
+      '外面是这栋楼的侧院。',
+      '侧院里空无一人。',
+      '但侧院中间有一把椅子。',
+      '上面坐着一个人。',
+      '那个人也在往上看。',
+      '和你对视了大概三秒。',
+      '然后他消失了。椅子也消失了。',
+      '侧院还是空的。就像什么都没有发生过。',
+    ],
+  },
+};
+
+// ═══════════════════════════
+// RENDER CHOICES
+// ═══════════════════════════
+function btn(t,fn,cls=''){
+  const b=document.createElement('button');
+  b.className='cb'+(cls?' '+cls:'');
+  b.textContent=t;b.onclick=fn;
+  document.getElementById('ch').appendChild(b);
+}
+function clrCh(){document.getElementById('ch').innerHTML=''}
+function renderCh(arr){clrCh();arr.forEach(o=>{btn(o.t,()=>{if(o.s){G.sus+=o.s}o.a()},o.c||'');})}
+
+// ═══════════════════════════
+// HUBS
+// ═══════════════════════════
+function corridorHub(){
+  if(!G.yanGreeted)G.yanGreeted=false;
+  if(!G.moGreeted)G.moGreeted=false;
+  G.loc='corridor';updateSt();
+  const arr=[
+    {t:'→ 失物招领处',a:()=>{if(!tick())return;enterLAF()}},
+    {t:'→ 心理诊所',a:()=>{if(!tick())return;enterClinic()}},
+  ];
+  // inspect options
+  Object.keys(INSPECT.corridor).forEach(spot=>{
+    const done=G.inspected['cor_'+spot];
+    arr.push({t:(done?'↺ ':'🔍 ')+spot,s:done?0:1,c:done?'':'sp',a:()=>doInspect('corridor',spot)});
+  });
+  if(G.yanV>=3&&G.moV>=2&&!G.corridorSeen)
+    arr.push({t:'→ 走廊深处 [新]',c:'sp',a:()=>{if(!tick())return;corridorEvent()}});
+  if(G.inv.filter(i=>!i.startsWith('__')).length>0)
+    arr.push({t:'🎒 使用道具',a:()=>useItemMenu('corridor')});
+  // exit available after visiting at least one location
+  if(G.yanV>0||G.moV>0)
+    arr.push({t:'▸ 走向出口',c:G.sus>=10?'sp':'',a:()=>tryLeave()});
+  arr.push({t:'📖 结局图鉴',a:()=>showCatalog()});
+  arr.push({t:'……（走向黑暗）',c:'dn',a:()=>die()});
+  renderCh(arr);
+}
+
+function lafHub(){
+  G.loc='laf';updateSt();
+  const arr=[
+    {t:G.yanNamed?'💬 "你叫什么名字？"':'💬 "你叫什么名字？"',s:1,a:()=>{if(!tick())return;yanWho()}},
+    {t:'👁 翻看架子',s:1,a:()=>{if(!tick())return;yanShelf()}},
+  ];
+  if(G.inv.includes('军用绷带')||G.bandageTalked){
+    arr.push({t:'💬 询问绷带',s:1,a:()=>{if(!tick())return;yanBandage()}});
+  }
+  arr.push({t:'💬 "这里是哪里？"',s:1,a:()=>{if(!tick())return;yanWhereIsThis()}});
+  Object.keys(INSPECT.laf).forEach(spot=>{
+    const done=G.inspected['laf_'+spot];
+    arr.push({t:(done?'↺ ':'🔍 ')+spot,s:done?0:1,c:done?'':'sp',a:()=>doInspect('laf',spot)});
+  });
+  if(G.chap>=3) arr.push({t:`💬 "我的名字在册子里吗？"`,s:2,a:()=>{if(!tick())return;yanMyname()}});
+  if(G.chap>=4){
+    arr.push({t:'"你知道我死过多少次？"',s:2,a:()=>{if(!tick())return;yanDeaths()}});
+    arr.push({t:'"你知道这是游戏吗？"',s:2,a:()=>{if(!tick())return;yanGame()}});
+  }
+  if(G.chap>=3) arr.push({t:'"心理诊所那个人是谁？"',s:1,a:()=>{if(!tick())return;yanAskMo()}});
+  const realInv=G.inv.filter(i=>!i.startsWith('__'));
+  if(realInv.length>0) arr.push({t:'🎒 展示道具',c:'sp',a:()=>useItemMenu('laf')});
+  if(G.yanV>=8) arr.push({t:'◈ 我想永远留在这里',c:'dn',a:()=>endBad3()});
+  if(G.chap>=4&&G.sus>=15) arr.push({t:'▸ [直视她，什么都不说]',c:'sp',a:()=>tryLeave()});
+  arr.push({t:'📖 结局图鉴',a:()=>showCatalog()});
+  arr.push({t:'← 返回走廊',a:()=>corridorHub()});
+  renderCh(arr);
+}
+
+function clinicHub(){
+  G.loc='clinic';updateSt();
+  const arr=[
+    {t:'💬 "这里是哪里？"',s:1,a:()=>{if(!tick())return;moWhereIsThis()}},
+    ...(G.moV>=2&&nameHistory.length>0?[{t:'"你记得上次我来吗？"',s:2,a:()=>{if(!tick())return;moMem()}}]:[]),
+    {t:'"失物招领处那个人是谁？"',s:1,a:()=>{if(!tick())return;moAskYan()}},
+    {t:'"你叫什么名字？"',s:1,a:()=>{if(!tick())return;moWho()}},
+  ];
+  arr.push({t:'倾诉 · 我很害怕',s:1,a:()=>{tick();moConfess('fear')}});
+  arr.push({t:'倾诉 · 我想回家',s:1,a:()=>{tick();moConfess('home')}});
+  arr.push({t:'倾诉 · 我不知道自己是谁',s:1,a:()=>{tick();moConfess('identity')}});
+  Object.keys(INSPECT.clinic).forEach(spot=>{
+    const done=G.inspected['cli_'+spot];
+    arr.push({t:(done?'↺ ':'🔍 ')+spot,s:done?0:1,c:done?'':'sp',a:()=>doInspect('clinic',spot)});
+  });
+  if(!G.hasNote&&G.chap>=2) arr.push({t:'"我想离开这里。"',a:()=>{if(!tick())return;moLeave()}});
+  if(G.hasNote&&!G.noteUsed) arr.push({t:'📄 [拿出莫承威的纸条]',a:()=>{if(!tick())return;moNoteUse()}});
+  if(G.moLoopQ>=4) arr.push({t:'▸ [故意沉默]',s:2,c:'sp',a:()=>{if(!tick())return;moSilence()}});
+  const realInv=G.inv.filter(i=>!i.startsWith('__'));
+  if(realInv.length>0) arr.push({t:'🎒 展示道具',c:'sp',a:()=>useItemMenu('clinic')});
+  if(G.moV>=8) arr.push({t:'◈ 我想留在这里',c:'dn',a:()=>endAssistMo()});
+  arr.push({t:'📖 结局图鉴',a:()=>showCatalog()});
+  arr.push({t:'← 返回走廊',a:()=>corridorHub()});
+  renderCh(arr);
+}
+
+function endAssistMo(){
+  G.ended=true;
+  endingsUnlocked.add("assistMo");
+  clr();
+  sep();p('特  殊  结  局','oN');p('《 观 察 者 》','oN');sep();pb();
+  p(P+'，你坐在心理诊所的椅子上。','oi');pb();
+  p('他坐在桌后。还是那双黑眼睛，还是那颗痣。','oi');pb();
+  p('他抬起头。看见你还坐在那里。','oi');pb();
+  pMo();
+  p('"你不走了。"','om');pb();
+  p('不是问句。陈述。像是他早就知道你会这么决定。','oi');pb();
+  p('他从抽屉里拿出一支笔。递给你。','oi');
+  p('笔杆上有一道很浅的划痕。像是被人握了很久。','oi');pb();
+  pMo();
+  p('"这个给你。"','om');
+  p('"你可以写你想写的。"','om');
+  p('"写下来就不会丢了。"','om');pb();
+  p('你接过笔。他看着你。看了一会儿。','oi');
+  p('他的目光在你握笔的手上停了一下。','oi');pb();
+  p('他低下头，翻开一本空白的册子。','oi');pb();
+  pMo();
+  p('"你写的时候——"','om');
+  p('"我可以看着吗。"','om');pb();
+  p('他问得很轻。像是他真的想知道这个问题的答案。','oi');pb();
+  sep();pb();
+  p('你写字。他坐在你旁边。','oi');
+  p('他的肩膀离你大约一掌宽。不远不近。','oi');pb();
+  p('你写了一个词。','oi');pb();
+  pMo();
+  p('"……害怕。"','om');pb();
+  p('他的声音很轻。像在念一个他不熟悉的词。','oi');pb();
+  pMo();
+  p('"你写的是害怕。"','om');pb();
+  p('停顿。','oi');pb();
+  pMo();
+  p('"……害怕是什么感觉。"','om');
+  p('"我不太确定。"','om');
+  p('"你能告诉我吗。"','om');
+  p('"还是你写下来就好。"','om');pb();
+  p('他低下头。拿起自己的笔。在自己的册子上写了什么。','oi');pb();
+  p('他写了一会儿之后，忽然停下来了。','oi');pb();
+  p('他抬起头。看着你。嘴角的弧度还在。和刚才一样。','oi');pb();
+  pMo();
+  p('"我也想写。"','om');
+  p('"但我不太确定该写什么。"','om');
+  p('"你能帮我看看吗。"','om');pb();
+  p('他把册子转过来。','oi');pb();
+  lrow('内容','今天有人坐在我旁边。');
+  lrow('','我好像——',true);pb();
+  p('他停在那里。没有写完。','oi');pb();
+  pMo();
+  p('"我该写什么。"','om');
+  p('"我不知道。"','om');pb();
+  p('他的语气很温和。温和到像是一个孩子在问一个他不会的题目。','oi');pb();
+  sep();pb();
+  p('后来。','ol');pb();
+  p('她来了。','oi');pb();
+  p('她站在门口。看了你一眼。又看了他一眼。','oi');pb();
+  pYan();p('"你收了个助手。"','oy');pb();
+  p('他想了想。','oi');pb();
+  pMo();
+  p('"嗯。"','om');
+  p('"她坐在我旁边。"','om');
+  p('"她在写东西。"','om');
+  p('"她写的比我写的好。"','om');pb();
+  p('她放下一袋东西在桌上。没有看他。她走了。','oi');pb();
+  p('他看着那袋东西。看了很久。','oi');
+  p('然后他把它拿起来，放在自己那一侧。','oi');
+  p('他没有打开。他把它放在膝盖上。像在等什么。','oi');pb();
+  p('过了一会儿，他转过头，看着你。','oi');pb();
+  pMo();
+  p('"她拿来的东西——"','om');
+  p('"我不知道里面是什么。"','om');
+  p('"但我知道是她拿来的。"','om');pb();
+  p('停顿。','oi');pb();
+  pMo();
+  p('"她拿来的东西——我应该留着。"','om');pb();
+  p('他的语气很平。像在陈述一件他早就确定的事。','oi');pb();
+  sep();pb();
+  p('很久以后。','ol');pb();
+  p('你路过走廊。你看见一面镜子。','oi');
+  p('你停下来。你看着镜子里的自己。','oi');pb();
+  p('你看了很久。','oi');pb();
+  p('你不确定那个人是谁。','oi');pb();
+  p('你回到诊所。他坐在那里。他看着你走进来。','oi');pb();
+  pMo();p('"你回来了。"','om');pb();
+  p('你坐下来。你拿起笔。你翻开那本册子。','oi');pb();
+  p('封面是空白的。你翻到第一页。','oi');
+  p('上面有一行字。不是你的笔迹。','oi');pb();
+  lrow('','今天她回来了。');
+  lrow('','她好像不记得自己是谁了。');
+  lrow('','但我记得她。',true);
+  lrow('','我会一直记得她。');
+  lrow('','直到她想起来。');pb();
+  p('你合上册子。你转头看他。','oi');pb();
+  p('他坐在那里。看着你。嘴角的弧度还在。和很久以前一样。','oi');pb();
+  sep();pb();
+  p(P+'，你不再是玩家了。','ob');
+  p('你是这个像素世界里的一个NPC。','ob');
+  p('你有自己的记录本，自己的椅子，自己的观察角度。','oi');pb();
+  p('有时候你会想起出口在哪里。','oi');
+  p('但每次想起来，你都在写记录。','oi');
+  p('等你写完，你已经忘了刚才想到了什么。','oi');pb();
+  checkHiddenEnding();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+// ═══════════════════════════
+// INSPECT
+// ═══════════════════════════
+function doInspect(area,spot){
+  const key=area.slice(0,3)+'_'+spot;
+  const lines=INSPECT[area][spot];
+  G.inspected[key]=true;
+  if(!tick(1))return;
+  clr();
+  p('[ 检查：'+spot+' ]','os');pb();
+  lines.forEach(l=>p(l,l.startsWith('"')?'oy':'on'));
+  pb();
+  // pickup chance
+  const pickMap={
+    'cor_灯管':null,
+    'laf_柜台侧面':null,
+    'cli_桌上文件':null,
+  };
+  // item pickups on first inspect
+  const itemDrops={
+    'cor_走廊尽头':'军用绷带',
+    'laf_架子最高层':null,
+    'cli_书架':'照片',
+    'cor_墙上的告示':'钥匙链',
+  };
+  const drop=itemDrops[key];
+  if(drop&&!G.inv.includes(drop)&&!G.inv.includes('__got_'+key)){
+    G.inv.push(drop);G.inv.push('__got_'+key);
+    pb();p('[ 获得：'+drop+' ]','oitem');
+    updateSt();
+  }
+  G.sus+=(G.inspected[key]?0:1);
+  const prevLoc=G.loc;
+  renderCh([{t:'← 继续',a:()=>{if(prevLoc==='laf')lafHub();else if(prevLoc==='clinic')clinicHub();else corridorHub();}}]);
+}
+
+// ═══════════════════════════
+// USE ITEM MENU
+// ═══════════════════════════
+function useItemMenu(loc){
+  clr();
+  p('🎒 选择要展示的道具：','ol');pb();
+  const realInv=G.inv.filter(i=>!i.startsWith('__'));
+  const arr=realInv.map(item=>({
+    t:item,
+    a:()=>{
+      clr();
+      p('你拿出「'+item+'」。','oi');
+      const def=ITEMS[item];
+      if(!def){p('没什么特别的反应。','oi');}
+      else{
+        if(loc==='laf'&&def.useYan){
+          def.useYan();
+          // 交给晏明烛后从背包移除
+          const idx2=G.inv.indexOf(item);
+          if(idx2>-1){G.inv.splice(idx2,1);}
+          updateSt();
+        } else if(loc==='clinic'&&def.useMo){
+          def.useMo();
+        } else if(loc==='corridor'){
+          p('这里没有人。你把它放回去。','oi');
+        } else {
+          p('对方没有特别的反应。','oi');
+        }
+      }
+      pb();
+      renderCh([{t:'← 继续',a:()=>{if(loc==='laf')lafHub();else if(loc==='clinic')clinicHub();else corridorHub();}}]);
+    }
+  }));
+  arr.push({t:'← 取消',a:()=>{if(loc==='laf')lafHub();else if(loc==='clinic')clinicHub();else corridorHub();}});
+  renderCh(arr);
+}
+
+// ═══════════════════════════
+// YAN DIALOGUES
+// ═══════════════════════════
+function yanWho(){
+  G.loopQ++;clr();
+  p('你：','ou');p('"你叫什么名字？"','ou');pb();
+  if(G.loopQ===1){
+    p('她手里的笔停了一下。','oi');pb();
+    p('她抬起头，看了你一眼。','oi');pb();
+    pYan();
+    p('"晏明烛。"','oy');pb();
+    G.yanNamed=true;
+    refreshNotePanel();
+    p('她重新低下头。','oi');pb();
+    if(G.yanTalkedFirst){
+      p('停顿。','oi');pb();
+      pYan();
+      p('"怎么，来这么久才想起来问。"','oy');pb();
+    }
+  } else if(G.loopQ===2){
+    if(G.yanNamed){
+      p('她手里的笔没停。','oi');pb();
+      pYan();
+      p('"晏明烛。"','oy');pb();
+      p('她翻了一页册子。','oi');pb();
+      pYan();
+      p('"你问了两遍了。"','oy');
+    } else {
+      pYan();p('"管理员。"','oy');p('"1997年上任。到现在。"','oy');pb();
+      p('和上次一字不差。','oi');
+    }
+  } else if(G.loopQ===3){
+    p('她的笔停了。','oi');pb();
+    if(G.yanNamed){
+      pYan();p('"你问了三遍了。"','oy');pb();
+      p('她没有抬头。','oi');pb();
+      pYan();p('"你已经知道答案了。"','oy');
+    } else {
+      pYan();p('"你问了三遍了。"','oy');pb();
+      p('她抬起头。看着你。嘴角有一个很淡的弧度。','oi');pb();
+      pYan();
+      p('"你是记性不好——"','oy');
+      p('"还是怕我不记得你。"','oy');pb();
+      p('她翻开册子。翻到你那一页。推过来。','oi');pb();
+      lrow('来访者',P,true);lrow('问询次数','3');lrow('首次登记日','已记录');pb();
+      pYan();
+      p('"我记得你。从第一次就记得。"','oy');
+    }
+    G.sus+=1;setTimeout(maybeNarrativeGlitchYan,600);
+  } else if(G.loopQ===5){
+    p('她翻开册子。翻到中间某一页。把册子转过来。','oi');pb();
+    p('你看见自己的名字。旁边是正字笔画。五画。','oi');pb();
+    pYan();p('"五次。"','oy');pb();
+    p('她的手指在那五画上划了一下。','oi');pb();
+    pYan();
+    p('"你再问几次——这一页就要写满了。"','oy');
+    p('"写满之后，就要翻页了。"','oy');
+    p('"你就要变成两页纸的人了。"','oy');pb();
+    p('停顿。','oi');pb();
+    pYan();
+    p('"你问得越多，就越难走出去。"','oy');
+    G.sus+=2;
+  } else if(G.loopQ===8){
+    p('她放下笔。沉默了几秒。','oi');pb();
+    pYan();p('"八次。"','oy');pb();
+    p('她翻开册子。翻到第一页。转过来给你看。','oi');pb();
+    p('你看见你的名字，在1997年那一页。','oi');
+    p('日期旁边写着"登记"。备注那一栏是空的。','oi');pb();
+    pYan();
+    p('"你第一次来的时候，就已经在这里了。"','oy');
+    p('"你只是不记得。"','oy');pb();
+    p('她合上册子。','oi');pb();
+    pYan();p('"我替你记着。"','oy');pb();
+    p('【某些东西发生了变化。】','ow');
+    G.sus+=3;G.chap=Math.max(G.chap,3);
+  } else if(G.loopQ>=10){
+    p('她没有抬头。','oi');pb();
+    p('她把册子推过来。','oi');pb();
+    lrow('失物','问题×'+G.loopQ+'个');
+    lrow('失主',P,true);
+    lrow('状态','无人认领');
+    lrow('备注','失主仍在追问');pb();
+    pYan();
+    p('"你问出去的每一个问题，都留在这里了。"','oy');pb();
+    p('【你已经问了'+G.loopQ+'次了。】','ow');
+    G.sus+=3;G.chap=Math.max(G.chap,4);
+  } else {
+    pYan();p('"管理员。"','oy');p('"1997年上任。到现在。"','oy');pb();
+    p('你已经问了'+G.loopQ+'次了。','oi');
+  }
+  renderCh([{t:'继续',a:lafHub}]);
+}
+
+
+function yanWhereIsThis(){
+  G.yanTalkedFirst=true;clr();
+  p('你：','ou');p('"这里是哪里？"','ou');pb();
+  if(!G.whereAsked){
+    G.whereAsked=true;
+    p('她手里的笔停了一下。','oi');pb();
+    pYan();
+    p('"失物招领处。"','oy');pb();
+    p('她翻了一页册子，才抬眼看你。','oi');pb();
+    pYan();
+    p('"B栋，侧门进，左转第三间。"','oy');pb();
+    p('停顿。','oi');pb();
+    pYan();
+    p('"营业时间——"','oy');pb();
+    p('她停了一下。','oi');pb();
+    pYan();
+    p('"没有营业时间。"','oy');
+    p('"什么时候来都开着。"','oy');pb();
+    p('她重新低下头。','oi');
+    G.sus+=1;
+  } else if(!G.whereAsked2){
+    G.whereAsked2=true;
+    p('她没有抬头。','oi');pb();
+    pYan();
+    p('"你来了这么多次了。"','oy');pb();
+    p('停顿。翻了一页。','oi');pb();
+    pYan();
+    p('"还是不知道这里是哪里。"','oy');pb();
+    p('她合上册子。','oi');pb();
+    pYan();
+    p('"没关系。"','oy');
+    p('"在这里的人，大多数都不知道。"','oy');pb();
+    G.sus+=2;
+  } else {
+    p('她没有抬头。','oi');pb();
+    pYan();
+    p('"失物招领处。"','oy');pb();
+    p('她翻了一页。继续登记。','oi');
+  }
+  renderCh([{t:'继续',a:lafHub}]);
+}
+
+function yanShelf(){
+  G.yanTalkedFirst=true;
+  if(G.sawShelf){
+    clr();
+    pYan();p('"不要动别人的东西。"','oy');
+    renderCh([{t:'继续',a:lafHub}]);return;
+  }
+  G.sawShelf=true;G.sus+=1;clr();
+  p('你走近架子。','on');
+  p('每件东西都有标签：失主姓名，遗失日期，当前状态。');pb();
+  p('一个学生证——失主：林晓晨，高三二班，死于四月十二日。');
+  p('一部手机——屏幕裂了，失主：未知，状态：持续存放中。');
+  p('一张照片——照片里的人你不认识。照片背面写着今天的日期。');pb();
+  p('今天的日期。','oi');pb();
+  setTimeout(narrativeGlitchDeath,1000);
+  p('你回头看她。她没有抬头。','oi');pb();
+  pYan();p('"不要动别人的东西。"','oy');pb();
+  p('停顿。她低下头。声音低了一点。','oi');pb();
+  pYan();
+  p('"有人翻过那本登记册。"','oy');
+  p('"翻到最后一页。"','oy');pb();
+  p('她抬起眼皮。看了你一眼。','oi');pb();
+  pYan();
+  p('"然后那个人——就没有再出现过。"','oy');pb();
+  p('停顿。','oi');pb();
+  pYan();p('"你也不要翻。"','oy');
+  renderCh([{t:'继续',a:lafHub}]);
+}
+
+
+function yanBandage(){
+  G.yanTalkedFirst=true;
+  if(!G.inv.includes('军用绷带')){
+    clr();
+    p('你想问关于绷带的事。','oi');pb();
+    p('但你身上什么都没有。','oi');pb();
+    pYan();
+    p('"东西放窗口。说清楚哪里捡的。"','oy');pb();
+    p('她低下头，继续登记。','oi');
+    renderCh([{t:'继续',a:lafHub}]);
+    return;
+  }
+  if(G.bandageTalked){
+    clr();pYan();p('"已经登记过了。"','oy');
+    renderCh([{t:'继续',a:lafHub}]);return;
+  }
+  G.bandageTalked=true;G.chap=Math.max(G.chap,2);clr();
+  p('你把手里的物品放上窗口。她拿起来看了一眼。','oi');
+  p('然后——没有立刻翻册子。抬头，看了你一眼。','oi');pb();
+  pYan();p('"你身上的绷带。从哪里来的？"','oy');pb();
+  renderCh([
+    {t:'"走廊尽头的箱子里捡的。"',s:0,a:()=>{
+      clr();
+      pYan();p('"哪个箱子。"','oy');pb();
+      p('你说了位置。她翻册子，停下来，把登记册转过来。','oi');pb();
+      lrow('失物','军用压缩绷带×1');lrow('地点','走廊尽头');
+      lrow('失主','未知');lrow('状态','未领取',true);pb();
+      p('你：','ou');p('"那个人是谁？"','ou');pb();
+      pYan();p('"没有留名字。"','oy');p('"不是所有失主都愿意留名字。"','oy');pb();
+      p('游戏道具为什么会有失主。','oi');G.sus+=1;
+      renderCh([{t:'继续',a:lafHub}]);
+    }},
+    {t:'"……什么绷带？"',s:1,a:()=>{
+      clr();
+      pYan();p('"你左侧口袋。"','oy');pb();
+      p('你低头看。确实有一卷绷带。你想不起来什么时候放进去的。','oi');pb();
+      pYan();
+      p('"失主来问过。我说还没人来认领。"','oy');
+      p('"现在算认领了。"','oy');
+      p('"但你既然用过，就不能还回去了。登记为：转手。"','oy');
+      G.sus+=2;renderCh([{t:'继续',a:lafHub}]);
+    }},
+    {t:'"和你有什么关系？"',s:1,a:()=>{
+      clr();
+      p('她没有生气。只是平静地看着你。','oi');pb();
+      pYan();
+      p('"失主有权知道自己的东西在哪里。"','oy');
+      p('"你有权知道你拿的东西是否有失主。"','oy');pb();
+      p('停顿。','oi');pb();
+      pYan();p('"这里是失物招领处。和我有关系。"','oy');
+      G.sus+=1;renderCh([{t:'继续',a:lafHub}]);
+    }},
+  ]);
+}
+
+function yanMyname(){
+  G.yanTalkedFirst=true;
+  clr();
+  p('你：','ou');p('"我的名字在册子里吗？"','ou');pb();
+  p('她翻开册子。手指停在某一页。','oi');
+  p('她把册子推过来。','oi');pb();
+  p('你看见自己的名字。最下面一行。','oi');
+  p('上面的字被涂黑了，很厚。看不清底下是什么。','oi');
+  p('但涂黑的边缘透出几个字——','oi');pb();
+  p('"拒绝离开。"','ow');pb();
+  p('她一直没说话。等你抬起头看她。','oi');pb();
+  pYan();p('"附页你看不了。"','oy');pb();
+  p('你：','ou');p('"为什么。"','ou');pb();
+  pYan();p('"因为还没写完。"','oy');pb();
+  p('她低下头，翻了一页。','oi');pb();
+  pYan();p('"你还在写。"','oy');
+  G.sus+=2;G.chap=Math.max(G.chap,4);
+  renderCh([{t:'继续',a:lafHub}]);
+}
+
+
+function yanDeaths(){
+  G.yanTalkedFirst=true;
+  clr();
+  p('你：','ou');p('"你知道我死过多少次吗？"','ou');pb();
+  p('她放下笔。','oi');
+  p('侧过身，打开身后的柜子。','oi');
+  p('最下面一格。一个牛皮纸袋，上面写着你的名字。袋子是鼓的。','oi');pb();
+  pYan();
+  p('"你死过的次数——不在我的登记范围里。"','oy');pb();
+  p('她把袋子拿出来，放在台面上。手指在袋口上压了一下。','oi');pb();
+  pYan();
+  p('"但你每次死后丢掉的东西——都在这里。"','oy');pb();
+  p('她看着你。','oi');pb();
+  pYan();p('"你少了什么，我都替你收着。"','oy');
+  G.sus+=2;renderCh([{t:'继续',a:lafHub}]);
+}
+
+
+function yanGame(){
+  G.yanTalkedFirst=true;
+  clr();
+  p('你：','ou');p('"你知道这是个游戏吗？"','ou');pb();
+  p('她翻了一下册子。然后停下来。','oi');pb();
+  pYan();p('"「游戏」。"','oy');pb();
+  p('她重复了一遍。','oi');pb();
+  pYan();p('"你觉得这里是游戏。"','oy');pb();
+  p('她抬起头。看着你。','oi');pb();
+  pYan();
+  p('"那你知道——游戏里丢的东西，也是丢。"','oy');pb();
+  p('停顿。','oi');pb();
+  pYan();
+  p('"你觉得你删掉的——在我这里，是存着的。"','oy');
+  G.sus+=3;G.chap=Math.max(G.chap,4);
+  renderCh([{t:'继续',a:lafHub}]);
+}
+
+
+function yanAskMo(){
+  G.yanTalkedFirst=true;
+  clr();
+  p('你：','ou');p('"心理诊所那个人，到底是什么人？"','ou');pb();
+  pYan();p('"来访者。"','oy');pb();
+  p('她翻了一页册子。','oi');pb();
+  pYan();
+  p('"他来过很多次。"','oy');
+  p('"——很多很多次。"','oy');pb();
+  p('她合上册子。抬起眼。','oi');pb();
+  pYan();
+  p('"但他从来没在这里留下过东西。"','oy');
+  p('"也没认领过东西。"','oy');pb();
+  p('停顿。','oi');pb();
+  pYan();p('"你知道这意味着什么吗。"','oy');pb();
+  renderCh([
+    {t:'"什么意思？"',s:1,a:()=>{
+      clr();
+      pYan();
+      p('"他身上没有可以丢的东西。"','oy');
+      p('"所以他不是来找东西的。"','oy');pb();
+      p('停顿。她低下头，翻了一页。','oi');pb();
+      pYan();
+      p('"他是来看——别人丢了什么的。"','oy');
+      G.sus+=1;renderCh([{t:'继续',a:lafHub}]);
+    }},
+    {t:'"他在你这里登记过什么？"',s:2,a:()=>{
+      clr();
+      p('她翻开册子。翻到很前面的一页。手指停在某一处。','oi');pb();
+      pYan();
+      p('"他第一次来的时候——什么都没带。"','oy');
+      p('"我问他是来认领东西的吗。"','oy');pb();
+      p('停顿。','oi');pb();
+      pYan();p('"他说——我不知道。"','oy');pb();
+      p('她合上册子。','oi');pb();
+      pYan();
+      p('"后来他经常来。"','oy');
+      p('"每次都说不知道。"','oy');pb();
+      p('她看着你。','oi');pb();
+      pYan();
+      p('"一个人说不知道说多了——"','oy');
+      p('"慢慢就会变成真的。"','oy');
+      p('"他现在是真的不知道了。"','oy');
+      p('"但他还在来。"','oy');
+      G.sus+=2;G.chap=Math.max(G.chap,3);
+      renderCh([{t:'继续',a:lafHub}]);
+    }},
+    {t:'"你认识他多久了？"',s:1,a:()=>{
+      clr();
+      p('她写字的手停了一瞬。很短。','oi');pb();
+      pYan();p('"很久。"','oy');pb();
+      p('她放下笔。','oi');pb();
+      pYan();
+      p('"他来的时候，这栋楼还没建好。"','oy');pb();
+      p('停顿。','oi');pb();
+      pYan();
+      p('"他第一次来，站在门口。"','oy');
+      p('"站了很久。没有进来。"','oy');pb();
+      p('她低下头，翻开册子。','oi');pb();
+      pYan();
+      p('"后来他进来了。"','oy');
+      p('"他问我这里是做什么的。"','oy');
+      p('"我说——登记失物。"','oy');
+      p('"他说——我没有东西可以丢。"','oy');pb();
+      p('她合上册子。','oi');pb();
+      pYan();
+      p('"他说的是真的。"','oy');
+      p('"但他还是来了。"','oy');
+      p('"一直在来。"','oy');
+      G.sus+=3;G.chap=Math.max(G.chap,4);
+      renderCh([{t:'继续',a:lafHub}]);
+    }},
+  ]);
+}
+
+
+// ═══════════════════════════
+// MO DIALOGUES
+// ═══════════════════════════
+function moMem(){
+  G.moTalkedFirst=true;
+  G.moLoopQ++;clr();
+  p('你：','ou');p('"你记得上次我来吗？"','ou');pb();
+  if(G.moLoopQ===1){
+    p('他想了想。那个思考的过程很认真。','oi');
+    p('他的眉头微微皱了一下——不是不耐烦，是真的在想。','oi');pb();
+    pMo();p('"嗯——记得。"','om');pb();
+    p('他低头翻开一本东西。封面是黑色的。里面密密麻麻写满了字。','oi');pb();
+    // dynamic first visit line
+    if(lastFirstVisit && lastFirstVisit !== G.firstVisit){
+      const lastPlace = lastFirstVisit==='laf'?'她那里':'我这里';
+      const thisPlace = G.firstVisit==='clinic'?'我这里':'她那里';
+      pMo();
+      p('"你上次，第一个去的是'+lastPlace+'。"','om');pb();
+      p('停顿。他歪了一下头。','oi');pb();
+      pMo();
+      p('"这次先来'+thisPlace+'了。"','om');
+    } else if(G.firstVisit==='clinic'){
+      pMo();
+      p('"你来的时候，第一个来的是我这里。"','om');pb();
+      p('他的嘴角动了一下。不确定是不是笑。可能就是嘴角动了一下。','oi');
+    } else {
+      pMo();
+      p('"你来的时候，先去了她那里。"','om');
+    }
+    pb();
+    p('他合上那本东西。看着你。','oi');pb();
+    pMo();
+    p('"但是你来过。"','om');
+    p('"我记得。"','om');
+    p('"我记得你坐的位置。"','om');
+    p('"你走的时候，椅子比原来偏了一点。"','om');
+    p('"我把它推回去了。"','om');
+    G.sus+=2;
+  } else if(G.moLoopQ===2){
+    p('他笑了一下。','oi');
+    p('是那种——他好像很高兴你问这个问题。','oi');pb();
+    pMo();p('"嗯。记得。"','om');pb();
+    p('他翻开那本黑色的东西。翻到你那一页。但他没有看。他看着你。','oi');pb();
+    pMo();
+    p('"你上次来的时候，坐了大概——"','om');
+    p('"比第一次短一些。"','om');
+    p('"你走的时候，门没有关好。"','om');
+    p('"我帮你关上了。"','om');pb();
+    p('他停了一下。','oi');pb();
+    pMo();
+    p('"你走的时候，在门口停了一小下。"','om');
+    p('"你在看什么东西吗。"','om');
+    p('"还是你在想什么事情。"','om');pb();
+    p('他问得很认真。像是这个问题他真的想了很久。','oi');
+    G.sus+=2;
+  } else if(G.moLoopQ===3){
+    p('他放下笔。他抬起头看着你。看了很久。','oi');
+    p('不是那种让你不安的看。是那种——他在等你说完他想知道的东西。','oi');pb();
+    pMo();p('"嗯，记得。"','om');pb();
+    p('他低下头。手指在纸面上轻轻划了一道。','oi');pb();
+    pMo();
+    p('"第三次了。"','om');
+    p('"你每次来都会问这个问题。"','om');pb();
+    p('停顿。嘴角的弧度还在。','oi');pb();
+    pMo();
+    p('"你在确认我还记不记得你——"','om');
+    p('"还是你在确认自己还记不记得自己。"','om');pb();
+    p('他停了一下。','oi');pb();
+    pMo();
+    p('"我不太确定是哪一个。"','om');
+    p('"但我会一直记得你。"','om');
+    p('"这个我确定。"','om');pb();
+    pMo();
+    p('"'+P+'，疼吗。"','om');pb();
+    p('他问得轻。像在问一件很小的事。','oi');pb();
+    pMo();
+    p('"我不知道疼是什么感觉——"','om');
+    p('"但我看过很多人在我面前觉得疼。"','om');
+    p('"我觉得你好像也在疼。"','om');pb();
+    p('他歪了一下头。嘴角的那颗痣随着动作消失在视线里。','oi');pb();
+    pMo();
+    p('"你注意到的东西，"','om');
+    p('"已经开始注意你了。"','om');
+    p('"我也不知道这样好不好。"','om');
+    p('"但我觉得应该告诉你。"','om');
+    p('"不然你会更害怕。"','om');
+    G.sus+=2;
+  } else if(G.moLoopQ>=4){
+    p('他合上那本黑色的东西。动作很轻。像怕书页被夹到。','oi');pb();
+    pMo();
+    p('"嗯——这一次吗。"','om');pb();
+    p('他的目光落在一个不太准确的地方。','oi');
+    p('像是他不在看你。他是在看你坐的位置。','oi');pb();
+    pMo();
+    p('"你来了'+G.moLoopQ+'次了。"','om');pb();
+    p('停顿。他低下头。翻开那本东西。翻到某一页。看了很久。','oi');pb();
+    p('然后他抬起头。','oi');pb();
+    pMo();
+    p('"那一页写的也是'+G.moLoopQ+'次。"','om');pb();
+    p('停顿。','oi');pb();
+    pMo();
+    p('"你不要太在意。"','om');
+    p('"我会改的。"','om');pb();
+    p('他合上那本东西。把它放在膝盖上。','oi');
+    p('你注意到他嘴角微微弯了一下。','oi');pb();
+    p('【他开始主动记录你了。】','ow');
+    G.sus+=3;G.chap=Math.max(G.chap,4);
+  }
+  renderCh([{t:'继续',a:clinicHub}]);
+}
+
+
+function moAskYan(){
+  G.moTalkedFirst=true;
+  clr();
+  p('你：','ou');p('"失物招领处那个管理员，到底是什么人？"','ou');pb();
+  p('他没有立刻回答。','oi');pb();
+  p('他的目光落在一个不太明确的地方。像是在想一件他很久以前做过的事情。','oi');pb();
+  pMo();p('"嗯——她呀。"','om');pb();
+  p('他低下头，翻开那本黑色的东西，翻到很前面的一页。他没有看那一页，只是把手放在那一页上。','oi');pb();
+  pMo();
+  p('"她是管理员。"','om');
+  p('"她在这里很久了。比我久。"','om');pb();
+  p('他抬起头。嘴角的弧度还在。','oi');pb();
+  pMo();
+  p('"她记得每一个人。"','om');
+  p('"每一个人她都记得。"','om');
+  p('"包括我。"','om');pb();
+  p('停顿。','oi');pb();
+  pMo();
+  p('"……她记得我。"','om');
+  p('"这个让我觉得……有点安心。"','om');
+  p('"又有点不太安心。"','om');pb();
+  renderCh([
+    {t:'"她好像知道一些不该知道的事。"',s:1,a:()=>{
+      clr();
+      p('他笑了一下。那个笑容很浅，浅到像是他自己也不太确定自己在笑。','oi');pb();
+      pMo();
+      p('"嗯——她确实知道一些事。"','om');
+      p('"但她不是故意知道的。"','om');pb();
+      p('他歪了一下头。','oi');pb();
+      pMo();
+      p('"——她就是会知道。"','om');pb();
+      p('他低下头，手指在纸面上划了一下。','oi');pb();
+      pMo();
+      p('"我也知道一些事。"','om');
+      p('"但她知道的比我多。"','om');
+      p('"因为她待的时间比我长。"','om');pb();
+      p('他抬起头看着你。','oi');pb();
+      pMo();
+      p('"你在担心她吗。"','om');
+      p('"还是你在担心她知道的东西。"','om');
+      G.sus+=1;renderCh([{t:'继续',a:clinicHub}]);
+    }},
+    {t:'"她的登记册从1997年就没换过签名。"',s:2,a:()=>{
+      clr();
+      p('他停了一下。手指停在纸面上。然后他合上了那本黑色的东西。','oi');pb();
+      pMo();p('"嗯。"','om');pb();
+      p('他想了很久。','oi');pb();
+      pMo();
+      p('"她不是没换过签名——"','om');
+      p('"她是……"','om');pb();
+      p('停顿。','oi');pb();
+      pMo();
+      p('"她写的那个名字，已经不能算是她自己的名字了。"','om');
+      p('"她用太久了。"','om');pb();
+      p('停顿。他抬头看着你，眼睛很黑。','oi');pb();
+      pMo();
+      p('"字迹会变。但是字迹下面那个东西——"','om');
+      p('"——那个东西还在。"','om');pb();
+      p('他低下头，重新翻开那本东西。','oi');pb();
+      pMo();
+      p('"我也有一个名字。"','om');
+      p('"但我不太确定那是不是我的名字。"','om');
+      p('"我只是用久了。"','om');
+      p('"用久了，就算是我了。"','om');
+      G.sus+=2;G.chap=Math.max(G.chap,3);
+      renderCh([{t:'继续',a:clinicHub}]);
+    }},
+    {t:'"你认识她多久了？"',s:1,a:()=>{
+      clr();
+      p('他停了一下。笔尖悬在纸面上方。','oi');pb();
+      pMo();p('"嗯——很久。"','om');pb();
+      p('他抬起头。嘴角的弧度还在。','oi');pb();
+      pMo();
+      p('"我第一次去的时候——她坐在柜台后面。"','om');
+      p('"我问她这里是做什么的。"','om');
+      p('"她说——登记失物。"','om');
+      p('"我说——我没有东西可以丢。"','om');pb();
+      p('他低下头，笔尖在纸面上划了一下。','oi');pb();
+      pMo();
+      p('"她笑了一下。"','om');
+      p('"她说——那你本身，就是一件失物。"','om');pb();
+      p('停顿。','oi');pb();
+      pMo();
+      p('"她说得对。"','om');
+      p('"我确实是。"','om');
+      p('"只是我花了很长时间才明白。"','om');
+      G.sus+=3;G.chap=Math.max(G.chap,4);
+      renderCh([{t:'继续',a:clinicHub}]);
+    }},
+  ]);
+}
+
+
+function moWho(){
+  clr();
+  p('你：','ou');p('"你叫什么名字？"','ou');pb();
+
+  if(!G.moTalkedFirst){
+    // 没有先聊过其他话题
+    p('他抬起头。看了你一下。','oi');pb();
+    pMo();
+    p('"嗯——"','om');pb();
+    p('他想了很久。碎发垂在脸侧。他没有把它拨开。','oi');pb();
+    pMo();
+    p('"莫承威。"','om');pb();
+    G.moNamed = true;
+    refreshNotePanel();
+    p('他低下头，重新拿起笔。','oi');
+  } else {
+    // 先聊过其他话题才问名字
+    p('他抬起头。嘴角动了一下。','oi');pb();
+    pMo();
+    p('"嗯——"','om');pb();
+    p('他歪了一下头。碎发滑到脸颊旁边。','oi');pb();
+    pMo();
+    p('"现在才想起来问我的名字嘛。"','om');pb();
+    p('他的语气很轻。像在说一件有点好笑的小事。','oi');pb();
+    p('停顿。他还在笑。','oi');pb();
+    pMo();
+    p('"莫承威。"','om');pb();
+    G.moNamed = true;
+    refreshNotePanel();
+    p('他低下头，重新拿起笔。','oi');pb();
+    pMo();
+    p('"记住了吗。"','om');pb();
+    p('不是问句。他已经在写字了。','oi');
+  }
+  renderCh([{t:'继续',a:clinicHub}]);
+}
+
+
+function moLeave(){
+  G.moTalkedFirst=true;
+  clr();
+  p('你：','ou');p('"我想离开这里。"','ou');pb();
+
+  if(G.sus < 6 || G.moV < 2){
+    // 完全无视
+    p('他的笔没有停。','oi');pb();
+    p('他低着头。','oi');pb();
+    p('他没有回答。','oi');pb();
+    p('像是你什么都没说。','oi');
+    renderCh([{t:'继续',a:clinicHub}]);
+    return;
+  }
+
+  if(G.sus < 10 || G.moV < 3){
+    // 还不到时候
+    p('他的笔停了一下。','oi');pb();
+    p('他没有抬头。','oi');pb();
+    pMo();
+    p('"嗯。"','om');pb();
+    p('停顿。很长的停顿。','oi');pb();
+    pMo();
+    p('"还不到时候。"','om');pb();
+    p('他重新开始写字。','oi');
+    p('他没有解释那是什么时候。','oi');
+    renderCh([{t:'继续',a:clinicHub}]);
+    return;
+  }
+
+  // sus>=10 且 moV>=3 才给纸条
+  G.hasNote=true;
+  p('他停下来。','oi');pb();
+  p('沉默了一会儿。','oi');pb();
+  p('然后他拉开抽屉。','oi');
+  p('里面有一张纸条。纸条是黄的，边角卷起来了。','oi');
+  p('像是放了很久了。','oi');pb();
+  p('他把它拿出来，放在桌面上。','oi');
+  p('他的手指在纸面上停了一下，然后收回去。','oi');pb();
+  lrow('内容','一串数字。');
+  lrow('备注','去失物招领处。');pb();
+  pMo();
+  p('"这是她写的。"','om');
+  p('"我帮她留着的。"','om');pb();
+  p('停顿。','oi');pb();
+  pMo();
+  p('"她说你总有一天会问。"','om');pb();
+  p('他已经重新拿起笔了。','oi');
+  p('他没有再看你。','oi');pb();
+  p('【获得：莫承威的纸条】','og');
+  G.inv.push('莫承威的纸条');updateSt();
+  renderCh([{t:'继续',a:clinicHub}]);
+}
+
+
+function moNoteUse(){
+  clr();
+  p('你把纸条放在桌上。','oi');pb();
+  p('他看了一眼。','oi');pb();
+  pMo();
+  p('"嗯——去过了。"','om');pb();
+  p('不是问句。','oi');pb();
+  p('你：','ou');p('"还没。"','ou');pb();
+  p('他点了点头。','oi');
+  p('好像这个答案他早就知道了。','oi');pb();
+  pMo();
+  p('"嗯。那就好。"','om');pb();
+  p('停顿。','oi');pb();
+  pMo();
+  p('"还没去的话——"','om');
+  p('"你还在这里。"','om');pb();
+  p('他低下头。翻开那本册子。','oi');pb();
+  pMo();
+  p('"你会去的。"','om');
+  p('"我知道你会去。"','om');
+  p('"你只是还没准备好。"','om');pb();
+  p('他抬起头。嘴角的弧度还在。','oi');pb();
+  pMo();
+  p('"我会等你的。"','om');
+  p('"等你准备好了再去。"','om');
+  p('"我这边不急。"','om');pb();
+  G.noteUsed=true;
+  renderCh([
+    {t:'去失物招领处',a:()=>{tick();G.yanV++;lafHub()}},
+    {t:'← 返回走廊',a:corridorHub},
+  ]);
+}
+
+
+function moWhereIsThis(){
+  G.moTalkedFirst=true;clr();
+  p('你：','ou');p('"这里是哪里？"','ou');pb();
+  if(!G.moWhereAsked){
+    G.moWhereAsked=true;
+    p('他停下来。想了一下。','oi');pb();
+    pMo();
+    p('"嗯——"','om');pb();
+    p('他抬起头。目光落在一个不太准确的地方。','oi');pb();
+    pMo();
+    p('"心理诊所。"','om');pb();
+    p('停顿。','oi');pb();
+    pMo();
+    p('"B栋，三楼，走廊尽头。"','om');pb();
+    p('他低下头，重新拿起笔。','oi');pb();
+    pMo();
+    p('"你是怎么进来的。"','om');pb();
+    G.sus+=1;
+  } else if(!G.moWhereAsked2){
+    G.moWhereAsked2=true;
+    p('他放下笔。抬起头。','oi');pb();
+    pMo();
+    p('"你问过我这个。"','om');pb();
+    p('停顿。他歪了一下头。','oi');pb();
+    pMo();
+    p('"你还是不知道这里是哪里吗。"','om');pb();
+    p('他的语气很温和。像是在问今天天气好不好。','oi');pb();
+    p('停顿。他看着你。','oi');pb();
+    pMo();
+    p('"没关系。"','om');
+    p('"知道不知道，你都在这里。"','om');pb();
+    p('他重新低下头。','oi');
+    p('他把你的问题写进了那本黑色的册子里。','oi');
+    G.sus+=1;
+  } else {
+    p('他抬起头。看了你一眼。','oi');pb();
+    pMo();
+    p('"心理诊所。"','om');pb();
+    p('他低下头。继续写字。','oi');
+    p('他嘴角动了一下。','oi');
+  }
+  renderCh([{t:'继续',a:clinicHub}]);
+}
+
+function moConfess(type){
+  G.moTalkedFirst=true;clr();
+  if(type==='fear'){
+    p('你：','ou');p('"我很害怕。"','ou');pb();
+    p('他放下笔。抬起头，看着你。','oi');pb();
+    pMo();
+    p('"害怕。"','om');pb();
+    p('他重复了一遍这个词。像在确认发音。','oi');pb();
+    pMo();
+    p('"能告诉我，是哪里让你觉得害怕吗。"','om');pb();
+    p('他的语气很温和，像在问今天午饭吃了什么。','oi');pb();
+    p('他拿起笔，在纸上写了什么。','oi');pb();
+    pMo();
+    p('"害怕是一种信号。"','om');
+    p('"说明你注意到了一些东西。"','om');pb();
+    p('他这样说着。','oi');
+    p('但他的表情，没有任何波动。','oi');
+    p('像是"害怕"对他来说只是一个需要记录的词。','oi');
+    G.sus+=1;
+  } else if(type==='home'){
+    p('你：','ou');p('"我想回家。"','ou');pb();
+    p('他停下来。想了一下。','oi');pb();
+    pMo();
+    p('"嗯——"','om');pb();
+    p('他歪了一下头。碎发垂下来。他没有把它拨开。','oi');pb();
+    pMo();
+    p('"家是什么样的。"','om');pb();
+    p('他问得很认真。真的想知道。','oi');pb();
+    p('你没有回答。','oi');pb();
+    p('他点了点头。','oi');pb();
+    pMo();
+    p('"没关系。不用现在说。"','om');pb();
+    p('他低下头，在纸上写了什么。','oi');pb();
+    pMo();
+    p('"等你想起来了，再告诉我。"','om');pb();
+    p('他说这句话的时候，语气和说"等天晴了再出门"一样。','oi');
+    p('你不确定他是否真的理解你说的是什么。','oi');
+    G.sus+=1;
+  } else if(type==='identity'){
+    p('你：','ou');p('"我不知道自己是谁。"','ou');pb();
+    p('他抬起头。这次没有停顿。','oi');pb();
+    pMo();
+    p('"嗯。"','om');pb();
+    p('停顿。他把笔放下了。','oi');pb();
+    pMo();
+    p('"很多人来这里，都是因为这个。"','om');pb();
+    p('他翻开那本黑色的东西。','oi');pb();
+    pMo();
+    p('"你记得你的名字吗。"','om');pb();
+    p('你点头。','oi');pb();
+    pMo();
+    p('"那就还好。"','om');pb();
+    p('停顿。他重新拿起笔。','oi');pb();
+    pMo();
+    p('"名字是最后丢掉的东西。"','om');pb();
+    p('他这样说着，已经开始写字了。','oi');
+    p('他的笔触很稳。像是这句话对他来说是一个已知的事实。','oi');
+    p('而不是一句安慰。','oi');
+    G.sus+=2;G.chap=Math.max(G.chap,2);
+  }
+  renderCh([{t:'继续',a:clinicHub}]);
+}
+
+function moSilence(){
+  G.moTalkedFirst=true;
+  clr();
+  p('你什么都不说。只是看着他。','oi');pb();
+  p('他等了一会儿。','oi');
+  p('然后他放下笔。','oi');pb();
+  pMo();
+  p('"嗯——你不说话。"','om');pb();
+  p('他歪了一下头。碎发滑到脸侧。他没有把它拨开。','oi');pb();
+  pMo();
+  p('"你是在想事情。"','om');pb();
+  p('停顿。像是在找一个他不会说错的词。','oi');pb();
+  pMo();
+  p('"——还是在等我先说话。"','om');pb();
+  p('他没有等到你的回答。','oi');
+  p('他低下头。翻开那本册子。','oi');pb();
+  pMo();
+  p('"你第一次来的时候——也是坐在这把椅子上。"','om');
+  p('"你那次说了很多话。"','om');
+  p('"比现在多。"','om');pb();
+  p('他抬起头。目光落在你脸上。','oi');pb();
+  pMo();
+  p('"你说——你不想走。"','om');
+  p('"你说你试过。"','om');
+  p('"但是走不出去。"','om');pb();
+  p('停顿。','oi');pb();
+  pMo();
+  p('"你好像忘了。"','om');
+  p('"但我记得。"','om');pb();
+  p('他低下头。重新拿起笔。','oi');pb();
+  pMo();
+  p('"我帮你留着呢。"','om');pb();
+
+  G.sus+=3;
+  renderCh([{t:'继续',a:clinicHub}]);
+}
+
+
+// ═══════════════════════════
+// CORRIDOR EVENT
+// ═══════════════════════════
+function corridorEvent(){
+  G.corridorSeen=true;G.sus+=3;G.chap=Math.max(G.chap,4);clr();
+  p('B栋 · 走廊 · 某一刻','ol');pb();
+  p('你走进走廊深处。然后停下来。');pb();
+  p((G.moNamed?'莫承威':'走廊那头的人')+'站在失物招领处的门口。');
+  p('没有进去。只是站着。');pb();
+  p('失物招领处里，'+(G.yanNamed?'晏明烛':'那个女人')+'坐在柜台后，低着头。');
+  p('两个人都没有说话。');pb();
+  p('你靠近一步。');
+  p((G.moNamed?'莫承威':'那个人')+'转身离开，像什么都没发生。');pb();
+  p('你走进失物招领处。'+(G.yanNamed?'晏明烛':'她')+'抬头。','oi');pb();
+  pYan();p('"他忘了拿东西。"','oy');p('"不是第一次了。"','oy');pb();
+  p('然后她低下头，继续登记。没有任何解释。','oi');pb();
+  p('【这个走廊场景，你只会看见一次。】','os');
+  renderCh([{t:'进入失物招领处',a:()=>{G.yanV++;lafHub()}}]);
+}
+
+// ═══════════════════════════
+// DEATH
+// ═══════════════════════════
+function die(msg){
+  if(G.ended)return;
+  if(!msg && !G.deathWarned){
+    G.deathWarned=true;
+    clr();
+    p('这将永久增加你的死亡计数。','ow');pb();
+    p('死亡累积至5次后，将触发特殊选项。','os');pb();
+    renderCh([
+      {t:'确认走向黑暗',c:'dn',a:()=>die('__confirmed__')},
+      {t:'← 返回',a:()=>{
+        if(G.loc==='laf')lafHub();
+        else if(G.loc==='clinic')clinicHub();
+        else corridorHub();
+      }},
+    ]);
+    return;
+  }
+  const _msg=(msg==='__confirmed__')?null:msg;
+  G.deaths++;G.timeLeft=Math.min(60,G.timeLeft+8);tick(0);clr();
+  p(_msg||('☠️ '+P+'，你死了。世界在震颤，然后重新聚合。'),'oe');pb();
+  p('时间奖励：+8','os');pb();
+  updateSt();
+  if(G.deaths>=5){
+    pb();p('你死了太多次了。','ow');pb();
+    renderCh([
+      {t:'死亡结局③——无人认领',c:'dn',a:()=>endDeath3()},
+      {t:'死亡结局②——删档重开',c:'dn',a:()=>endDeath2()},
+      {t:'强行翻开登记册',c:'dn',a:()=>endDeath1()},
+      {t:'继续',a:()=>corridorHub()},
+    ]);
+    return;
+  }
+  G.loc='corridor';
+  renderCh([
+    {t:'继续',a:()=>corridorHub()},
+    {t:'强行翻开登记册',c:'dn',a:()=>endDeath1()},
+  ]);
+}
+
+// ═══════════════════════════
+// TIMEOUT ENDING
+// ═══════════════════════════
+function endTimeout(){
+  endingsUnlocked.add("endTimeout");
+  G.ended=true;clr();
+  sep();p('死  亡  结  局','oB');p('《 超 时 留 置 》','oB');sep();pb();
+  p('时间耗尽了。');pb();
+  p('你不知道发生了什么。');
+  p('你只是忽然发现自己坐在失物招领处的柜台后面。');pb();
+  p((G.yanNamed?'晏明烛':'她')+'站在你面前，手里拿着登记册。','oi');pb();
+  pYan();p('"超时留置。"','oy');pb();
+  lrow('失物',P,true);lrow('失主','未知');
+  lrow('状态','超时，已转为留置物');
+  lrow('备注','永久存放');pb();sep();pb();
+  p(P+'，你成为了这里永久的一件遗失物。','ob');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+// ═══════════════════════════
+// LEAVE & ENDINGS
+// ═══════════════════════════
+function tryLeave(){
+  if(G.sus>=20&&G.loopQ>=8){endGood();return;}
+  if(G.hasNote&&G.noteUsed&&G.sus>=10){endNormalB();return;}
+  if(G.sus>=10){endNormalA();return;}
+  if(G.sus>=4){endBad1();return;}
+  endBad2();
+}
+
+function endGood(){
+  endingsUnlocked.add("endGood");
+  G.ended=true;clr();
+  sep();p('好  结  局','oG');p('《 已 认 领 》','oG');sep();pb();
+  p(P+'，你站在柜台前。最后一次。');pb();
+  p('你：','ou');p('"'+P+'的名字在你登记册里是什么状态？"','ou');pb();
+  p('她翻开册子。沉默了很久。然后把册子推过来。','oi');pb();
+  lrow('失主',P,true);lrow('状态','已离开',true);pb();
+  p('这是她第一次，主动开口说话以外的事情：','oi');pb();
+  pYan();p('"门在你身后。"','oy');p('"这次不要再丢东西了。"','oy');pb();
+  p('你离开了。','oi');pb();sep();pb();
+  p(P+'，你是第一个被她从登记册里划掉的名字。','og');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endNormalA(){
+  endingsUnlocked.add("endNormalA");
+  G.ended=true;clr();
+  sep();p('普  通  结  局','oN');p('《 未 领 取 》','oN');sep();pb();
+  p(P+'，你通关了。走到出口。');pb();p('门——打不开。','oi');pb();
+  p('你回头。失物招领处的灯还亮着。','oi');
+  p('你走回去。'+(G.yanNamed?'晏明烛':'她')+'在。她把一个信封推过来。','oi');pb();
+  lrow('失主',P,true);lrow('内容','出口钥匙');lrow('备注','你落下了。');pb();
+  p('你拿起钥匙。没有说话。离开。','oi');pb();sep();pb();
+  p('有些东西，你以为自己从来没有过。','oi');
+  p('只是还没来得及丢。','oi');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endNormalB(){
+  endingsUnlocked.add("endNormalB");
+  G.ended=true;clr();
+  sep();p('普  通  结  局','oN');p('《 来 访 者 》','oN');sep();pb();
+  p(P+'，你带着莫承威的纸条走进失物招领处。');
+  p('把纸条放在窗口。'+(G.yanNamed?'晏明烛':'她')+'看了一眼。');pb();
+  lrow('经手人','莫承威');lrow('内容','凭此条可离开');lrow('状态','已验证',true);pb();
+  pYan();p('"他不常帮人。"','oy');pb();p('停顿。','oi');pb();
+  pYan();p('"珍惜一下。"','oy');pb();
+  p('你离开了。','oi');pb();
+  lrow('备注','由来访者担保，已离开',true);pb();sep();pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endBad1(){
+  endingsUnlocked.add("endBad1");
+  G.ended=true;clr();
+  sep();p('坏  结  局','oB');p('《 未 注 意 到 》','oB');sep();pb();
+  p(P+'，你从头到尾没有追问任何异常。');
+  p('正常通关。走到出口。门开了。');pb();
+  p('黑屏。','oi');p('你以为你离开了。','oi');pb();
+  p('然后是失物招领处的内景。'+(G.yanNamed?'晏明烛':'那个女人')+'正在登记。','oi');pb();
+  lrow('失物',P+'的注意力',true);lrow('失主',P);
+  lrow('状态','本人未察觉，持续遗失中');pb();
+  p('她盖章。翻页。灯灭。','oi');pb();sep();pb();
+  p(P+'，你没有真正离开。','ob');
+  p('你只是停止了注意到自己在哪里。','ob');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endBad2(){
+  endingsUnlocked.add("endBad2");
+  G.ended=true;clr();
+  sep();p('坏  结  局','oB');p('《 最 正 常 的 那 个 》','oB');sep();pb();
+  p(P+'，你一直觉得莫承威更可疑。');
+  p('把所有精力放在调查他上。完全忽视晏明烛。');pb();p('通关。','oi');pb();
+  lrow('莫承威的档案','关于'+P+'，共计47页');
+  lrow('晏明烛的登记册','关于'+P+'，共计1页');pb();
+  p('但那1页，','oi');p('记录了你不知道自己丢过的全部东西。','oi');
+  p('包括离开这里的方法。','oi');pb();sep();pb();
+  p('【你没有真正离开】','ob');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endBad3(){
+  endingsUnlocked.add("endBad3");
+  G.ended=true;clr();
+  sep();p('坏  结  局','oB');p('《 永 久 丢 失 》','oB');sep();pb();
+  p(P+'，你坐在失物招领处的柜台前，看着晏明烛。');pb();
+  pYan();p('"这里永远有一席之地。"','oy');pb();
+  p('你点了点头。','oi');pb();p('她翻开登记册，写下了你的名字。','oi');pb();
+  lrow('失物',P,true);lrow('失主','未知');
+  lrow('状态','已登记');lrow('备注','永久丢失');pb();sep();pb();
+  p(P+'，你永远留在了这里。','ob');
+  p('心理诊所照常营业。失物招领处照常登记。','oi');
+  p('仿佛在玩家通关、删档、卸载游戏之后，','oi');
+  p('他们依然会留在那个像素世界里，继续做自己的工作。','oi');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endDeath1(){
+  endingsUnlocked.add("endDeath1");
+  G.ended=true;clr();
+  sep();p('死  亡  结  局  ①','oB');p('《 存 档 损 坏 》','oB');sep();pb();
+  p('你强行翻开登记册。','oi');pb();
+  p('晏明烛没有阻止。只是平静地看着你。','oi');pb();
+  p('你翻到最后一页。','oi');pb();
+  lrow('失物',P,true);lrow('失主','游戏');lrow('状态','回收中');pb();
+  p('黑屏。','oi');pb();
+  p('【存档已损坏】','ow');p('【无法读取】','ow');pb();
+  p('没有读档选项。','oi');pb();sep();pb();
+  p(P+'，你以为你找到了什么。','ob');
+  p('你只是成为了一条登记记录。','ob');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endDeath2(){
+  endingsUnlocked.add("endDeath2");
+  G.ended=true;clr();
+  sep();p('死  亡  结  局  ②','oB');p('《 覆 盖 》','oB');sep();pb();
+  p(P+'，你选择删档重开。');pb();
+  p('黑屏。重新出现输入名字的界面。','oi');pb();
+  p('但名字栏里已经有字了。','ow');
+  p('是你刚才输入的名字——'+P+'。','ow');pb();
+  p('你清空它，输入新名字。进入游戏。','oi');
+  p('走进失物招领处。'+(G.yanNamed?'晏明烛':'她')+'抬头。','oi');pb();
+  pYan();p('"上一个'+P+'，"','oy');p('"把位置留给你了。"','oy');pb();
+  sep();pb();
+  p('你以为你重新开始了。','ob');
+  p('其实你只是接替了上一个人的位置。','ob');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+function endDeath3(){
+  endingsUnlocked.add("endDeath3");
+  G.ended=true;clr();
+  sep();p('死  亡  结  局  ③','oB');p('《 无 人 认 领 》','oB');sep();pb();
+  p('某一次死亡之后，读档界面出现异常。','oi');
+  p('存档列表里多了一个文件：','oi');pb();
+  lrow('存档名',P,true);lrow('创建时间','第一次死亡时');lrow('备注','无人认领');pb();
+  p('你点击它。进入的不是游戏。是失物招领处。','oi');pb();
+  p((G.yanNamed?'晏明烛':'她')+'坐在那里。抬头。','oi');pb();
+  pYan();p('"终于来了。"','oy');pb();p('停顿。','oi');pb();
+  pYan();p('"已经等了很久了。"','oy');pb();sep();pb();
+  p('你以为存档是你的。','ob');
+  p('其实从第一次死亡开始，','ob');
+  p('它就已经在她那里登记了。','ob');pb();
+  lrow('状态','无人认领 → 留置',true);pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+// ═══════════════════════════
+// RESET & START
+// ═══════════════════════════
+function checkHiddenEnding(){
+  const required=new Set(['endTimeout','endGood','endNormalA','endNormalB','endBad1','endBad2','endBad3','endDeath1','endDeath2','endDeath3','assistMo','noname']);
+  // assistYan is bad3 renamed, check both
+  const have=new Set([...endingsUnlocked]);
+  // map bad3 -> assistYan
+  // bad3 serves as assistYan ending
+  const missing=[...required].filter(e=>!have.has(e));
+  if(missing.length===0){
+    setTimeout(()=>endHidden(),800);
+  }
+}
+
+function endHidden(){
+  endingsUnlocked.add('hidden');
+  clr();
+  sep();
+  p('◈  隐  藏  结  局','oG');
+  p('《 1997 》','oG');
+  sep();pb();
+  p('这个结局没有名字标签。','os');
+  p('这个结局不属于你。','os');pb();
+  sep();pb();
+  p('1997年。这栋楼刚建好的那一年。','ol');pb();
+  p('失物招领处的灯第一次亮起来。','oi');pb();
+  p('晏明烛坐在柜台后面，翻开一本新的登记册。','oi');
+  p('第一页是空的。','oi');
+  p('她在上面写下了日期。','oi');pb();
+  p('然后门开了。','oi');pb();
+  p('走进来一个穿白衬衫的男人。','oi');
+  p('她抬头看他。','oi');pb();
+  pYan();
+  p('"把东西放在窗口。"','oy');
+  p('"说清楚在哪里捡的。"','oy');pb();
+  p('他站在那里，没有动。','oi');pb();
+  pMo();
+  p('"没有东西要放。"','om');pb();
+  p('停顿。','oi');pb();
+  pYan();
+  p('"那你是来认领的？"','oy');pb();
+  p('他想了很久。','oi');
+  p('头发有几缕垂下来，他没有去整理。','oi');pb();
+  pMo();
+  p('"不知道。"','om');pb();
+  p('她看了他一眼。','oi');
+  p('然后低下头，在登记册上写了什么。','oi');pb();
+  lrow('来访者','莫承威');
+  lrow('日期','1997年');
+  lrow('事由','不明');
+  lrow('备注','第一次',true);pb();
+  sep();pb();
+  p('后来。','ol');pb();
+  p('他经常来。','oi');
+  p('每次都说没有东西要放，也没有东西要认领。','oi');
+  p('每次她都给他登记。','oi');pb();
+  p('有一次，他在登记册里看见自己的名字出现了很多页。','oi');pb();
+  pMo();
+  p('"你为什么一直记录我。"','om');pb();
+  p('她没有立刻回答。','oi');pb();
+  pYan();
+  p('"因为你一直来。"','oy');pb();
+  p('停顿。','oi');pb();
+  pYan();
+  p('"来过的东西，我都要记录。"','oy');pb();
+  p('他看着她。','oi');pb();
+  pMo();
+  p('"我不是东西。"','om');pb();
+  pYan();
+  p('"我知道。"','oy');pb();
+  p('停顿。很长的停顿。','oi');pb();
+  pYan();
+  p('"但你是我记录过的东西里，唯一一个会回来的。"','oy');pb();
+  sep();pb();
+  p('再后来。','ol');pb();
+  p('他问她：','oi');pb();
+  pMo();
+  p('"你在这里多少年了。"','om');pb();
+  p('不是问句。','oi');pb();
+  pYan();
+  p('"从1622年。"','oy');pb();
+  p('他算了一下。','oi');pb();
+  pMo();
+  p('"很久。"','om');pb();
+  p('他的语气很平。像是在说一个不令他意外的数字。','oi');pb();
+  pYan();
+  p('"是。"','oy');pb();
+  p('停顿。他把手里的笔放在桌上。','oi');pb();
+  pMo();
+  p('"你不累吗。"','om');pb();
+  p('她停下来，看着他。','oi');
+  p('这是他第一次问她这种问题。','oi');pb();
+  pYan();
+  p('"以前累。"','oy');pb();
+  p('停顿。','oi');pb();
+  pYan();
+  p('"后来不了。"','oy');pb();
+  p('他没有问为什么。','oi');
+  p('但她知道他在想什么。','oi');pb();
+  p('她低下头，继续登记。','oi');pb();
+  sep();pb();
+  p('他问过她一次：','ol');pb();
+  pMo();
+  p('"你怕我吗。"','om');pb();
+  p('她翻了一页登记册。','oi');pb();
+  pYan();
+  p('"你是用别人的身体走进来的。"','oy');
+  p('"里面装的不是你应该有的东西。"','oy');
+  p('"你不知道什么是痛，什么是饿，什么是冷。"','oy');pb();
+  p('停顿。','oi');pb();
+  pYan();
+  p('"但我活了四百年。"','oy');
+  p('"我见过的比你奇怪的东西，装满这里的架子还装不完。"','oy');pb();
+  p('她抬起头，看着他。','oi');pb();
+  pYan();
+  p('"我不怕你。"','oy');pb();
+  p('他沉默了很久。','oi');pb();
+  pMo();
+  p('"我不知道怎么——"','om');pb();
+  p('他停下来。','oi');
+  p('那句话他没说完。','oi');
+  p('他低下头，碎发遮住了他的表情。','oi');pb();
+  p('但她听懂了。','oi');pb();
+  pYan();
+  p('"我知道。"','oy');pb();
+  p('她重新低下头。','oi');pb();
+  pYan();
+  p('"你不需要知道怎么。"','oy');
+  p('"你一直来就够了。"','oy');pb();
+  sep();pb();
+  p('这一页登记册，','os');
+  p('晏明烛从来没有给任何人看过。','os');pb();
+  p('包括他。','os');pb();
+  sep();pb();
+  p('◈','oG');pb();
+  p('你见到了不该见到的东西。','oi');
+  p('但失物招领处的规矩是：','oi');pb();
+  p('见过的，就要登记。','oy');pb();
+  lrow('目击者',P,true);
+  lrow('事由','目击1997年以来的所有记录');
+  lrow('处理方式','存档，不公开');
+  lrow('经手人','晏明烛');pb();
+  sep();pb();
+  p('感谢你玩完了这个游戏。','og');pb();
+  renderCh([
+    {t:'📖 结局图鉴',a:()=>showCatalog()},
+    {t:'🔄 重新开始',a:resetGame},
+  ]);
+}
+
+// ═══════════════════════════
+// ENDING CATALOG
+// ═══════════════════════════
+const ENDING_CATALOG = [
+  {id:'endGood',    type:'good',   name:'《 已 认 领 》',    hint:'她第一次把你从登记册里划掉。'},
+  {id:'endNormalA', type:'normal', name:'《 未 领 取 》',    hint:'出口钥匙，一直在等你来拿。'},
+  {id:'endNormalB', type:'normal', name:'《 来 访 者 》',    hint:'他不常帮人。'},
+  {id:'endBad1',    type:'bad',    name:'《 未 注 意 到 》', hint:'你丢掉的东西，连你自己都不知道。'},
+  {id:'endBad2',    type:'bad',    name:'《 最 正 常 的 那 个 》', hint:'那1页，比47页更重要。'},
+  {id:'endBad3',    type:'special',name:'《 在 职 》',       hint:'把东西放在窗口，说清楚在哪里捡的。'},
+  {id:'assistMo',   type:'special',name:'《 观 察 者 》',    hint:'不要写「害怕」。写「应激反应，程度3」。'},
+  {id:'endDeath1',  type:'death',  name:'《 存 档 损 坏 》', hint:'你翻到了最后一页。'},
+  {id:'endDeath2',  type:'death',  name:'《 覆 盖 》',       hint:'上一个人把位置留给你了。'},
+  {id:'endDeath3',  type:'death',  name:'《 无 人 认 领 》', hint:'它一直在等你来认领。'},
+  {id:'endTimeout', type:'death',  name:'《 超 时 留 置 》', hint:'时间耗尽之后，你去了哪里。'},
+  {id:'hidden',     type:'hidden', name:'《 1997 》',        hint:'???'},
+  {id:'noname',     type:'death',  name:'《 你 忘 记 了 你 的 名 字 》', hint:'有些东西，丢了就找不回来了。'},
+];
+
+const TYPE_LABEL = {
+  good:   '好结局',
+  normal: '普通结局',
+  bad:    '坏结局',
+  special:'特殊结局',
+  death:  '死亡结局',
+  hidden: '隐藏结局',
+};
+const TYPE_COLOR = {
+  good:   'oG',
+  normal: 'oN',
+  bad:    'oB',
+  special:'oy',
+  death:  'oe',
+  hidden: 'og',
+};
+
+function showCatalog(){
+  clr();
+  p('◈  结 局 图 鉴','ol'); sep(); pb();
+
+  const total = ENDING_CATALOG.length;
+  const unlocked = ENDING_CATALOG.filter(e => endingsUnlocked.has(e.id)).length;
+  p(`已解锁 ${unlocked} / ${total}`,'os');
+  if(unlocked > 0 && unlocked < total){
+    pb();
+    // Yan's hint - how many are missing, but not which ones
+    const missing = total - unlocked;
+    pYan();
+    if(missing >= 6){
+      p('"你还有很多东西没有认领。"','oy');
+    } else if(missing >= 3){
+      p('"你还有'+missing+'件东西没有认领。"','oy');
+    } else if(missing === 2){
+      p('"你还有两件东西没有认领。"','oy');
+      p('"快了。"','oy');
+    } else if(missing === 1){
+      p('"你还有一件东西没有认领。"','oy');
+      pb();p('停顿。','oi');pb();
+      p('"就一件。"','oy');
+    }
+  } else if(unlocked === total){
+    pb();
+    pYan();
+    p('"都认领了。"','oy');
+    pb();p('停顿。','oi');pb();
+    p('"很少有人做到这件事。"','oy');
+  }
+  pb(); sep(); pb();
+
+  ENDING_CATALOG.forEach(e => {
+    const got = endingsUnlocked.has(e.id);
+    const typeLabel = TYPE_LABEL[e.type] || '';
+    const typeCls   = TYPE_COLOR[e.type]  || 'on';
+
+    if(got){
+      p(typeLabel, typeCls);
+      p(e.name, typeCls);
+      p(e.hint, 'oi');
+    } else {
+      p(typeLabel, 'os');
+      p('《 ？ ？ ？ 》', 'os');
+      p('——', 'os');
+    }
+    pb();
+  });
+
+  sep(); pb();
+
+  // show where player currently is and return
+  const prevLoc = G.loc;
+  renderCh([{t:'← 返回',a:()=>{
+    clr();
+    if(G.ended){
+      p('游戏已结束。','os');
+      renderCh([{t:'🔄 重新开始',a:resetGame}]);
+    } else {
+      if(prevLoc==='laf') { G.yanV--; enterLAF(); }
+      else if(prevLoc==='clinic') { G.moV--; enterClinic(); }
+      else corridorHub();
+    }
+  }}]);
+}
+
+
+function resetGame(){
+  // save name history before reset
+  if(P&&P!=='旅人') nameHistory.push(P);
+  lastFirstVisit = G.firstVisit;
+  P='旅人';
+  G={loc:'corridor',inv:[],sus:0,deaths:0,yanV:0,moV:0,loopQ:0,moLoopQ:0,
+    corridorSeen:false,hasNote:false,noteUsed:false,chap:1,ended:false,
+    bandageTalked:false,sawShelf:false,inspected:{},npcsSeen:[],moNotes:[],
+    timeLeft:60,totalMoves:0,usedItems:[],
+    yanGreeted:false,moGreeted:false,deathWarned:false,firstVisit:null,yanNamed:false,moNamed:false,yanTalkedFirst:false,moTalkedFirst:false,whereAsked:false,whereAsked2:false};
+  clr();
+  document.getElementById('notes-panel').innerHTML='';
+  document.getElementById('notes-panel').classList.remove('visible');
+  document.getElementById('modal').style.display='flex';
+  document.getElementById('nin').value='';
+  clrCh();updateSt();
+}
+
+function startGame(name){
+  const trimmed = name.trim();
+  if(!trimmed){
+    // blank name ending
+    document.getElementById('modal').style.display='none';
+    clr();
+    sep();
+    p('死  亡  结  局','oB');
+    p('《 你 忘 记 了 你 的 名 字 》','oB');
+    sep();pb();
+    p('你停在那里，看着那一栏。','oi');pb();
+    p('你想写一个名字。','oi');pb();
+    p('但你想不起来。','oi');pb();
+    p('你想了很久。','oi');
+    p('走廊里的灯管在闪。','oi');pb();
+    p('你想——也许名字不重要。','oi');pb();
+    p('你走进去了。没有名字。','oi');pb();
+    sep();pb();
+    p('失物招领处。','ol');pb();
+    p('她坐在柜台后面。抬起头，看了你一眼。','oi');pb();
+    pYan();
+    p('"东西放窗口。说清楚哪里捡的。"','oy');pb();
+    p('你站在那里。','oi');pb();
+    pYan();
+    p('"你叫什么名字。"','oy');pb();
+    p('你没有回答。','oi');pb();
+    p('停顿。','oi');pb();
+    p('她翻开登记册。在某一页写了什么。','oi');pb();
+    p('她把册子转过来给你看。','oi');pb();
+    lrow('失物','一个名字');
+    lrow('失主','未知');
+    lrow('状态','遗失，无法归还',true);
+    lrow('备注','失主本人亦不记得');pb();
+    p('她合上册子。','oi');pb();
+    pYan();
+    p('"你不记得自己的名字了。"','oy');pb();
+    p('停顿。','oi');pb();
+    pYan();
+    p('"没关系。"','oy');
+    p('"我帮你记着。"','oy');pb();
+    sep();pb();
+    p('你迷失在黑暗之中。','ob');pb();
+    p('连名字都丢掉的人，走不出这栋楼。','oi');pb();
+    endingsUnlocked.add('noname');
+    checkHiddenEnding();
+    renderCh([{t:'🔄 重新开始',a:resetGame}]);
+    return;
+  }
+  P=trimmed;
+  document.getElementById('modal').style.display='none';
+  clr();
+  p('◈  失物招领处','ol');sep();pb();
+  p(P+'，你醒来的时候，不知道自己在哪里。');
+  p('走廊很长。灯管有一根在闪。');
+  p('尽头有两扇门。');pb();
+  p('左边的门牌：心理诊所。');
+  p('右边的门牌生锈，你凑近看——失物招领处。');pb();
+  p('【你在一栋没有出口的楼里。】','os');
+  p('【时间有限。每次行动消耗1格时间，共60格。】','os');
+  p('【死亡可恢复8格时间。检查环境可发现道具。】','os');pb();sep();pb();
+  G.loc='corridor';updateSt();
+  renderCh([
+    {t:'→ 失物招领处',a:()=>{if(!tick())return;enterLAF()}},
+    {t:'→ 心理诊所',a:()=>{if(!tick())return;enterClinic()}},
+    {t:'👁 先观察走廊',c:'sp',a:()=>{
+      if(!tick())return;clr();
+      p('你没有立刻走过去。走廊两侧贴着告示，大多泛黄。','oi');
+      p('你看见一张比较新的：','oi');pb();
+      lrow('公告','有遗失物者请前往B栋侧门失物招领处登记。管理员：？？？，全年无休。');
+      lrow('日期','1997年 · 2005年 · 2014年 · 2026年',true);
+      lrow('备注','以上均为同一张告示。');pb();
+      p('同一张告示。不同年份。','oi');pb();G.sus+=1;
+      renderCh([
+        {t:'→ 失物招领处',a:()=>{if(!tick())return;enterLAF()}},
+        {t:'→ 心理诊所',a:()=>{if(!tick())return;enterClinic()}},
+        {t:'……（走向黑暗）',c:'dn',a:()=>die()},
+      ]);
+    }},
+    {t:'……（走向黑暗）',c:'dn',a:()=>die()},
+  ]);
+}
+
+function enterLAF(){
+  G.yanV++;G.loc='laf';updateSt();clr();
+  if(!G.firstVisit) G.firstVisit='laf';
+  p('B栋 · 失物招领处','ol');pb();
+  if(G.yanV===1 && !G.yanGreeted && nameHistory.length>0 && P!==nameHistory[nameHistory.length-1]){
+    G.yanGreeted=true;
+    const lastName=nameHistory[nameHistory.length-1];
+    p('你推开门。声音在门口断了。','oi');pb();
+    p('四面都是架子。钱包，钥匙，照片，录音机。每一件都贴着标签。');pb();
+    p('柜台后面坐着一个女人。头发很黑，衬衫很白。');
+    p('她抬起头，看了你一眼。然后，她又看了你一眼。','oi');pb();
+    pYan();
+    p('"……上一个'+lastName+'的东西，还放在这里。"','oy');pb();
+    p('停顿。','oi');pb();
+    pYan();
+    p('"你要认领吗。"','oy');pb();
+    setTimeout(()=>{
+      renderCh([
+        {t:'"认领。"',s:2,a:()=>{
+          clr();
+          p('她翻开册子。在某一页写了你的名字。','oi');pb();
+          lrow('认领人',P,true);lrow('原失主',lastName);lrow('备注','已转交');pb();
+          p('她合上册子。低下头。','oi');pb();
+          pYan();
+          p('"东西在架子上。自己找。"','oy');pb();
+          p('她重新拿起笔。没有再看你。','oi');
+          G.sus+=2;lafHub();
+        }},
+        {t:'"不认领。"',s:0,a:()=>{
+          clr();
+          p('她看了你一眼。','oi');pb();
+          pYan();p('"好。"','oy');pb();
+          lrow('备注','新来访者拒绝认领，遗留物继续存放');pb();
+          p('她重新低下头，翻了一页。','oi');
+          lafHub();
+        }},
+      ]);
+    },0);
+    return;
+  }
+  if(G.yanV===1){
+    p('你推开门。声音在门口断了。','oi');pb();
+    p('房间不大。四面都是架子，塞满了东西。');
+    p('钱包，钥匙，照片，录音机。每一件都贴着标签。');
+    p('标签上的字很小。你凑近了才看得清。');pb();
+    p('柜台后面坐着一个女人。头发很黑，衬衫很白。');
+    p('她抬起头，看了你一眼。','oi');pb();
+    pYan();
+    p('"东西放窗口。说清楚哪里捡的。"','oy');pb();
+    p('你放下去。她伸手接过去。','oi');
+    p('指腹在你手背擦了一下。','oi');pb();
+    pYan();
+    p('"手这么凉。走廊里没暖气吗。"','oy');pb();
+    p('她的语气像在关心你。','oi');
+    p('但她的目光已经落在那件东西上了。','oi');
+  } else if(G.yanV===2){
+    p('你推开门。她没抬头。','oi');pb();
+    pYan();p('"又来了。"','oy');pb();
+    p('你站在柜台前。','oi');
+    p('她翻了一页册子，才抬起眼皮看了你一眼。','oi');pb();
+    pYan();p('"今天没带东西来？"','oy');pb();
+    p('她低下头。笔尖在纸面上划了一道。','oi');pb();
+    pYan();p('"那今天来做什么。"','oy');
+  } else {
+    p('你推开门。她已经在看你了。','oi');
+    p('像她听到你脚步声了。或者像她一直在等。','oi');pb();
+    pYan();p('"今天带什么了。"','oy');pb();
+    p('你放东西。她拿过去，看一眼，翻开册子，写几笔。','oi');
+    p('动作很快。像做过很多次了。','oi');pb();
+    pYan();p('"还有别的吗。"','oy');
+  }
+  pb();lafHub();
+}
+
+
+function enterClinic(){
+  G.moV++;G.loc='clinic';updateSt();clr();
+  if(!G.firstVisit) G.firstVisit='clinic';
+  p('B栋 · 心理诊所','ol');pb();
+  if(G.moV===1 && !G.moGreeted && nameHistory.length>0 && P!==nameHistory[nameHistory.length-1]){
+    G.moGreeted=true;
+    const lastName=nameHistory[nameHistory.length-1];
+    p('门开着。','oi');
+    p('诊室不大。书架上的书按颜色排着。窗户开着一条缝，风把窗帘吹起来一点，又放下去。');pb();
+    p('他抬起头看你。嘴角动了一下。','oi');pb();
+    pMo();p('"啊，你来了。"','om');pb();
+    p('停顿。他歪了一下头。碎发滑到脸颊旁边。他没有把它拨开。','oi');pb();
+    pMo();
+    p('"你的名字——"','om');pb();
+    p('他停了一下。','oi');pb();
+    pMo();
+    p('"好像不是这个。"','om');pb();
+    p('他的语气很轻，像在说一件无关紧要的小事。','oi');pb();
+    p('你：','ou');p('"我叫'+P+'。"','ou');pb();
+    p('他点了点头。嘴角动了一下，不像是笑，又有点像。','oi');pb();
+    pMo();p('"嗯，'+P+'。"','om');pb();
+    p('停顿。','oi');pb();
+    pMo();p('"'+lastName+'更好听。"','om');pb();
+    p('他低下头，翻开资料。','oi');
+    p('像是这句话什么都不是。','oi');pb();
+    if(nameHistory.length>=2){
+      pb();p('他又抬起头，补充了一句：','oi');pb();
+      pMo();
+      p('"你之前还叫过'+nameHistory[nameHistory.length-2]+'。"','om');pb();
+      p('停顿。','oi');pb();
+      pMo();p('"换名字没有用的。"','om');pb();
+      p('他继续低头写字。嘴角的那颗痣随着他低头消失在视线里。','oi');
+      G.sus+=3;
+    } else { G.sus+=2; }
+    pb();clinicHub();return;
+  }
+  if(G.moV===1){
+    p('门开着。','oi');
+    p('诊室不大。书架上的书按颜色排着。');
+    p('窗户开着一条缝，风把窗帘吹起来一点点，又放下去。');pb();
+    p('桌子后面坐着一个人。');
+    p('他看起来二十多岁。脸很白，眼睛很黑。');
+    p('头发在脑后扎成一条低马尾，几缕碎发垂在脸侧。');
+    p('嘴角有一颗很小的痣。');pb();
+    p('他看见你了。他笑了一下。','oi');
+    p('不是客气的笑。是那种——他看见你了，他觉得应该笑一下。','oi');pb();
+    pMo();p('"啊，你来了。"','om');pb();
+    p('他的声音很轻。像怕声音大了会把什么震碎。','oi');pb();
+    pMo();p('"坐吧。"','om');p('"椅子是空的。"','om');pb();
+    p('你坐下。他看着你。歪了一下头。','oi');
+    p('碎发滑到脸颊旁边。他没有把它拨开。','oi');pb();
+    pMo();p('"你今天……在想什么呢。"','om');pb();
+    p('他说"在想什么呢"的时候，语气像是他真的不知道答案，真的想知道。','oi');
+  } else if(G.moV===2){
+    p('他抬起头。看见你的时候，嘴角动了一下。','oi');pb();
+    pMo();p('"啊，又来了。"','om');pb();
+    p('他放下笔。那支笔在桌面上轻轻滚了一下，碰到一本摊开的书。','oi');pb();
+    pMo();
+    p('"你上次走的时候，好像有点着急。"','om');pb();
+    p('停顿。','oi');pb();
+    pMo();p('"这次不着急吧。"','om');pb();
+    p('他问得很认真。像是在确认一件对他来说很重要的事。','oi');
+  } else {
+    p('他抬起头。目光在你脸上停了一下。','oi');pb();
+    pMo();
+    p('"今天——比上次晚了大概二十分钟。"','om');pb();
+    p('停顿。','oi');pb();
+    pMo();
+    p('"路上有什么东西让你停下来了吗。"','om');pb();
+    p('他的语气还是温和的。像在问今天天气好不好。','oi');pb();
+    p('你没有回答。他也没有追问。','oi');pb();
+    p('他低下头。手指在纸面上慢慢划了一下。','oi');pb();
+    pMo();p('"嗯，没关系。"','om');p('"记下来了。"','om');
+  }
+  pb();clinicHub();
+}
+// ═══════════════════════════
+// BIND
+// ═══════════════════════════
+document.getElementById('nok').onclick=()=>startGame(document.getElementById('nin').value);
+document.getElementById('nin').onkeydown=e=>{if(e.key==='Enter')startGame(document.getElementById('nin').value);};
+window.addEventListener('load',()=>{
+  const ni=document.getElementById('nin');
+  if(ni) ni.focus();
+});
+</script>
+</body>
+</html>
